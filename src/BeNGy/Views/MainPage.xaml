@@ -11,17 +11,21 @@
 		<ToolbarItem Text="Settings" AutomationId="SettingsButton" Clicked="OnSettingsClicked" Priority="0" />
 	</ContentPage.ToolbarItems>
 
+	<!-- ScrollView so the primary action stays reachable at any DPI / text scale;
+	     the window is fixed size and non-resizable (WindowService). -->
+	<ScrollView>
 	<VerticalStackLayout Spacing="10" Padding="20">
 
 		<!-- Prefix Selector -->
 		<Label Text="Prefix" FontSize="12" />
+		<!-- No Title: it renders as a second header line above the value, which
+		     duplicates the "Prefix" label and costs ~20px of a cramped window. -->
 		<Picker
 			x:Name="PrefixPicker"
 			AutomationId="PrefixPicker"
 			SemanticProperties.Description="Branch prefix"
 			ItemsSource="{Binding PrefixOptions}"
 			SelectedItem="{Binding Prefix}"
-			Title="Select prefix"
 			HorizontalOptions="Fill" />
 
 		<!-- Ticket Number Input -->
@@ -78,6 +82,7 @@
 		<!-- Validation Status Row -->
 		<HorizontalStackLayout
 			AutomationId="ValidationStatusRow"
+			IsVisible="{Binding HasBranchName}"
 			Spacing="6"
 			Margin="0,6,0,0">
 
@@ -182,5 +187,6 @@
 			Margin="0,4,0,0" />
 
 	</VerticalStackLayout>
+	</ScrollView>
 
 </ContentPage>

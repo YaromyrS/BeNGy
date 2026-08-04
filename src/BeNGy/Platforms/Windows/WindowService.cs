@@ -16,7 +16,12 @@ public class WindowService : IWindowService
     private AppWindow? _appWindow;
 
     private const int WindowWidth = 440;
-    private const int WindowHeight = 480;
+
+    // Tall enough for the whole form INCLUDING the Copy button and the validation
+    // warning rows, which only appear on invalid input. At 480 the button fell outside
+    // the window entirely and was never laid out -- invisible and unclickable, while
+    // UI Automation could still find and Invoke it, so the E2E suite passed regardless.
+    private const int WindowHeight = 640;
 
     public bool IsVisible { get; private set; } = true;
 

@@ -51,7 +51,15 @@ public partial class MainViewModel : BaseViewModel
     // ── Branch name + validation ───────────────────────────────────
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBranchName))]
     private string _generatedBranchName = string.Empty;
+
+    /// <summary>
+    /// True once there is actually a branch name to judge. Drives the validation status
+    /// row, so a freshly opened empty form does not announce "Valid" before the user has
+    /// typed anything.
+    /// </summary>
+    public bool HasBranchName => !string.IsNullOrEmpty(GeneratedBranchName);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsValid))]
