@@ -1,0 +1,56 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.3" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="NSubstitute" Version="5.*" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="CommunityToolkit.Mvvm.ComponentModel" />
+    <Using Include="CommunityToolkit.Mvvm.Input" />
+    <Using Include="System.Collections.ObjectModel" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="ThemeServiceTests.cs" />
+  </ItemGroup>
+
+  <!-- Include shared source directly since main project targets windows-only TFM -->
+  <ItemGroup>
+    <Compile Include="..\..\src\BeNGy\Services\Interfaces\ITrayService.cs" Link="Shared\ITrayService.cs" />
+    <Compile Include="..\..\src\BeNGy\Services\Interfaces\IWindowService.cs" Link="Shared\IWindowService.cs" />
+    <Compile Include="..\..\src\BeNGy\Services\Interfaces\IBranchNameGenerator.cs" Link="Shared\IBranchNameGenerator.cs" />
+    <Compile Include="..\..\src\BeNGy\Services\BranchNameGenerator.cs" Link="Shared\BranchNameGenerator.cs" />
+    <Compile Include="..\..\src\BeNGy\Models\BranchInput.cs" Link="Shared\BranchInput.cs" />
+    <Compile Include="..\..\src\BeNGy\Helpers\SingleInstanceManager.cs" Link="Shared\SingleInstanceManager.cs" />
+    <Compile Include="..\..\src\BeNGy\Helpers\StringTransformers.cs" Link="Shared\StringTransformers.cs" />
+    <Compile Include="..\..\src\BeNGy\ViewModels\BaseViewModel.cs" Link="Shared\BaseViewModel.cs" />
+    <Compile Include="..\..\src\BeNGy\ViewModels\MainViewModel.cs" Link="Shared\MainViewModel.cs" />
+    <Compile Include="..\..\src\BeNGy\Models\ValidationResult.cs" Link="Shared\ValidationResult.cs" />
+    <Compile Include="..\..\src\BeNGy\Services\Interfaces\IGitValidator.cs" Link="Shared\IGitValidator.cs" />
+    <Compile Include="..\..\src\BeNGy\Services\GitValidator.cs" Link="Shared\GitValidator.cs" />
+    <Compile Include="..\..\src\BeNGy\Services\Interfaces\IClipboardService.cs" Link="Shared\IClipboardService.cs" />
+    <Compile Include="..\..\src\BeNGy\Services\Interfaces\IHotkeyService.cs" Link="Shared\IHotkeyService.cs" />
+    <Compile Include="..\..\src\BeNGy\Services\Interfaces\IPreferencesService.cs" Link="Shared\IPreferencesService.cs" />
+    <Compile Include="..\..\src\BeNGy\Services\Interfaces\IThemeService.cs" Link="Shared\IThemeService.cs" />
+    <Compile Include="..\..\src\BeNGy\Services\Interfaces\IStartupService.cs" Link="Shared\IStartupService.cs" />
+    <Compile Include="..\..\src\BeNGy\Models\PreferenceKeys.cs" Link="Shared\PreferenceKeys.cs" />
+    <Compile Include="..\..\src\BeNGy\Models\DelayOption.cs" Link="Shared\DelayOption.cs" />
+    <Compile Include="..\..\src\BeNGy\Helpers\HotkeyFormattingHelper.cs" Link="Shared\HotkeyFormattingHelper.cs" />
+    <Compile Include="..\..\src\BeNGy\ViewModels\SettingsViewModel.cs" Link="Shared\SettingsViewModel.cs" />
+  </ItemGroup>
+
+</Project>

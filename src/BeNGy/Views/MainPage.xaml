@@ -1,0 +1,186 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 xmlns:vm="clr-namespace:BeNGy.ViewModels"
+			 xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+			 x:Class="BeNGy.Views.MainPage"
+			 x:DataType="vm:MainViewModel"
+			 Title="BeNGy">
+
+	<ContentPage.ToolbarItems>
+		<ToolbarItem Text="Settings" AutomationId="SettingsButton" Clicked="OnSettingsClicked" Priority="0" />
+	</ContentPage.ToolbarItems>
+
+	<VerticalStackLayout Spacing="10" Padding="20">
+
+		<!-- Prefix Selector -->
+		<Label Text="Prefix" FontSize="12" />
+		<Picker
+			x:Name="PrefixPicker"
+			AutomationId="PrefixPicker"
+			SemanticProperties.Description="Branch prefix"
+			ItemsSource="{Binding PrefixOptions}"
+			SelectedItem="{Binding Prefix}"
+			Title="Select prefix"
+			HorizontalOptions="Fill" />
+
+		<!-- Ticket Number Input -->
+		<Label Text="Ticket / Issue #" FontSize="12" />
+		<Entry
+			x:Name="TicketEntry"
+			AutomationId="TicketEntry"
+			SemanticProperties.Description="Ticket number"
+			Text="{Binding TicketNumber}"
+			Placeholder="PROJ-1234"
+			Keyboard="Plain"
+			ReturnType="Next"
+			HorizontalOptions="Fill" />
+
+		<!-- Title / Description Input -->
+		<Label Text="Title / Description" FontSize="12" />
+		<Entry
+			x:Name="TitleEntry"
+			AutomationId="TitleEntry"
+			SemanticProperties.Description="Branch title"
+			Text="{Binding Title}"
+			Placeholder="Add OAuth login flow"
+			Keyboard="Plain"
+			ReturnType="Done"
+			ReturnCommand="{Binding CopyCommand}"
+			HorizontalOptions="Fill" />
+
+		<!-- Branch Name Preview -->
+		<Label Text="Generated Branch Name" FontSize="12" Margin="0,10,0,0" />
+
+		<Border
+			BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray900}}"
+			Stroke="{AppThemeBinding Light={StaticResource Gray300}, Dark={StaticResource Gray600}}"
+			StrokeShape="RoundRectangle 4"
+			StrokeThickness="1"
+			Padding="12,8">
+
+			<Label
+				x:Name="PreviewLabel"
+				AutomationId="PreviewLabel"
+				SemanticProperties.Description="Generated branch name preview"
+				Text="{Binding GeneratedBranchName}"
+				FontFamily="Consolas"
+				FontSize="14"
+				TextColor="{AppThemeBinding Light={StaticResource Gray900}, Dark={StaticResource White}}"
+				LineBreakMode="TailTruncation">
+				<Label.GestureRecognizers>
+					<TapGestureRecognizer Command="{Binding CopyCommand}" />
+				</Label.GestureRecognizers>
+			</Label>
+
+		</Border>
+
+		<!-- Validation Status Row -->
+		<HorizontalStackLayout
+			AutomationId="ValidationStatusRow"
+			Spacing="6"
+			Margin="0,6,0,0">
+
+			<!-- Green checkmark — visible when valid -->
+			<Label
+				AutomationId="ValidIndicator"
+				SemanticProperties.Description="Valid branch name"
+				Text="✓"
+				TextColor="#22C55E"
+				FontSize="16"
+				FontAttributes="Bold"
+				IsVisible="{Binding IsValid}"
+				VerticalOptions="Center" />
+
+			<!-- Amber warning — visible when invalid -->
+			<Label
+				AutomationId="InvalidIndicator"
+				SemanticProperties.Description="Invalid branch name"
+				Text="⚠"
+				TextColor="#F59E0B"
+				FontSize="16"
+				IsVisible="{Binding IsValid, Converter={toolkit:InvertedBoolConverter}}"
+				VerticalOptions="Center" />
+
+			<!-- Status text: "Valid" / "Needs attention" -->
+			<Label
+				AutomationId="ValidationStatusLabel"
+				SemanticProperties.Description="Validation status"
+				Text="{Binding IsValid, Converter={StaticResource ValidationStatusConverter}}"
+				TextColor="{Binding IsValid, Converter={StaticResource ValidationColorConverter}}"
+				FontSize="12"
+				VerticalOptions="Center" />
+
+		</HorizontalStackLayout>
+
+		<!-- Inline validation warning section -->
+		<VerticalStackLayout
+			AutomationId="ValidationWarningSection"
+			IsVisible="{Binding IsValid, Converter={toolkit:InvertedBoolConverter}}"
+			Margin="0,2,0,0"
+			Spacing="4">
+
+			<!-- General validation error summary -->
+			<Label
+				AutomationId="ValidationMessageLabel"
+				Text="{Binding ValidationMessage}"
+				TextColor="#F59E0B"
+				FontSize="12"
+				IsVisible="{Binding ValidationMessage, Converter={StaticResource StringNotEmptyConverter}}"
+				LineBreakMode="WordWrap" />
+
+			<!-- Specific invalid character callout -->
+			<HorizontalStackLayout
+				AutomationId="InvalidCharsRow"
+				IsVisible="{Binding HasInvalidCharacters}"
+				Spacing="4">
+
+				<Label
+					AutomationId="InvalidCharsPrefix"
+					Text="Characters not allowed:"
+					TextColor="#F59E0B"
+					FontSize="12"
+					VerticalOptions="Center" />
+
+				<Label
+					AutomationId="InvalidCharsLabel"
+					Text="{Binding InvalidCharactersDisplay}"
+					TextColor="#F59E0B"
+					FontSize="12"
+					FontFamily="Consolas"
+					FontAttributes="Bold"
+					VerticalOptions="Center" />
+
+			</HorizontalStackLayout>
+
+		</VerticalStackLayout>
+
+		<!-- Copy Button — Primary Action (Story 4.1) -->
+		<Button
+			x:Name="CopyButton"
+			AutomationId="CopyButton"
+			SemanticProperties.Description="Copy branch name to clipboard"
+			Text="{Binding CopyButtonText}"
+			Command="{Binding CopyCommand}"
+			BackgroundColor="{Binding CopySuccess, Converter={StaticResource CopySuccessColorConverter}}"
+			TextColor="White"
+			FontSize="16"
+			FontAttributes="Bold"
+			HeightRequest="44"
+			CornerRadius="4"
+			Margin="0,16,0,0"
+			HorizontalOptions="Fill" />
+
+		<!-- Hint when copy is blocked by validation -->
+		<Label
+			AutomationId="CopyBlockedLabel"
+			Text="Fix validation issues above to copy"
+			TextColor="#F59E0B"
+			FontSize="11"
+			HorizontalOptions="Center"
+			IsVisible="{Binding IsValid, Converter={toolkit:InvertedBoolConverter}}"
+			Margin="0,4,0,0" />
+
+	</VerticalStackLayout>
+
+</ContentPage>

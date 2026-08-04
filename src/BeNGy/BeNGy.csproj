@@ -1,0 +1,70 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net8.0-windows10.0.19041.0</TargetFrameworks>
+		<OutputType>Exe</OutputType>
+		<RootNamespace>BeNGy</RootNamespace>
+		<UseMaui>true</UseMaui>
+		<SingleProject>true</SingleProject>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+
+		<!-- Windows specific -->
+		<RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</SupportedOSPlatformVersion>
+
+		<!-- Display name -->
+		<ApplicationTitle>BeNGy</ApplicationTitle>
+
+		<!-- App Identifier -->
+		<ApplicationId>com.bengy.branchnamegenerator</ApplicationId>
+		<ApplicationIdGuid>20c5be2d-60ab-4973-a2d4-2e37a2c9d50c</ApplicationIdGuid>
+
+		<!-- Versions -->
+		<ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
+		<ApplicationVersion>1</ApplicationVersion>
+		<Version>1.0.0</Version>
+		<FileVersion>1.0.0.0</FileVersion>
+
+		<!-- Unpackaged mode -->
+		<WindowsPackageType>None</WindowsPackageType>
+
+		<!-- Package metadata -->
+		<Description>A branch name generator for Git workflows</Description>
+		<Authors>airom</Authors>
+		<Copyright>Copyright (c) 2026 airom</Copyright>
+		<Product>BeNGy</Product>
+
+		<!-- Publish settings -->
+		<PublishSingleFile>true</PublishSingleFile>
+		<SelfContained>true</SelfContained>
+		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- App Icon -->
+		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+
+		<!-- Splash Screen -->
+		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+
+		<!-- Images -->
+		<MauiImage Include="Resources\Images\*" />
+
+		<!-- Custom Fonts -->
+		<MauiFont Include="Resources\Fonts\*" />
+
+		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
+		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="CommunityToolkit.Maui" Version="7.*" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
+		<PackageReference Include="H.NotifyIcon.WinUI" Version="2.1.0" />
+		<PackageReference Include="Microsoft.Maui.Controls" Version="8.0.100" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.*" />
+	</ItemGroup>
+
+</Project>

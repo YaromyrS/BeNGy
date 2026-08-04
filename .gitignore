@@ -1,0 +1,97 @@
+# .NET / MAUI .gitignore
+
+## Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+*.cache
+*.vspscc
+*.vssscc
+.builds
+
+## JetBrains Rider
+.idea/
+*.sln.iml
+
+## VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+## NuGet
+*.nupkg
+*.snupkg
+.nuget/
+nuget.exe
+
+## .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## MAUI / Xamarin
+*.appxupload
+*.appx
+*.msix
+*.msixupload
+*.ipa
+*.apk
+*.aab
+
+## Test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+TestResult.xml
+coverage*.json
+coverage*.xml
+*.coverage
+*.coveragexml
+
+## Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+## User-specific files
+*.rsuser
+*.pidb
+*.dbmdl
+*.jfm
+
+## AI tooling / planning scaffolding (local only)
+_bmad/
+_bmad-output/
+.claude/
+.cursor/
+.agent/
+.agents/
+.github/agents/
+.github/prompts/
+.github/appmod/
+.github/copilot-instructions.md
