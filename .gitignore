@@ -68,6 +68,7 @@ coverage*.xml
 *.coveragexml
 
 ## Windows
+*.stackdump
 Thumbs.db
 ehthumbs.db
 Desktop.ini

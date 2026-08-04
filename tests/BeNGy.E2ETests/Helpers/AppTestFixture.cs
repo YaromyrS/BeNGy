@@ -51,15 +51,104 @@ public class AppTestFixture : IDisposable
     }
 
     /// <summary>
-    /// Ensures the app is running. If it is already running, does nothing.
-    /// If it is not running (first call or after the process exited), launches it.
+    /// Ensures the app is running AND its window is on screen, ready to interact with.
+    ///
+    /// BeNGy hides its window instead of closing it (auto-close after copy, Escape,
+    /// close-to-tray), so "the process is alive" is not the same as "a test can drive
+    /// the UI". A hidden window reports Process.MainWindowHandle == IntPtr.Zero, which
+    /// is what every window lookup keys off.
     /// </summary>
     public Application EnsureRunning()
     {
-        if (_app is not null && !_app.HasExited)
-            return _app;
+        if (_app is null || _app.HasExited)
+            return LaunchApp();
 
-        return LaunchApp();
+        EnsureWindowVisible();
+        return _app;
+    }
+
+    /// <summary>
+    /// True when the app currently has a shown main window. A window hidden to the
+    /// tray reports no main window handle, which is the state this whole class has
+    /// to cope with.
+    /// </summary>
+    public bool HasVisibleMainWindow()
+    {
+        if (_app is null || _app.HasExited) return false;
+
+        try
+        {
+            using var process = Process.GetProcessById(_app.ProcessId);
+            process.Refresh();
+            return process.MainWindowHandle != IntPtr.Zero;
+        }
+        catch (ArgumentException)
+        {
+            return false;  // Process exited between the check and the lookup.
+        }
+    }
+
+    /// <summary>
+    /// Brings the window back if it is hidden in the tray, the same way a user would --
+    /// via the global hotkey. Falls back to a relaunch so a swallowed hotkey degrades
+    /// into a slower test rather than an unrecoverable one.
+    /// </summary>
+    public void EnsureWindowVisible(TimeSpan? timeout = null)
+    {
+        if (HasVisibleMainWindow()) return;
+
+        Keyboard.TypeSimultaneously(
+            FlaUI.Core.WindowsAPI.VirtualKeyShort.CONTROL,
+            FlaUI.Core.WindowsAPI.VirtualKeyShort.SHIFT,
+            FlaUI.Core.WindowsAPI.VirtualKeyShort.KEY_B);
+
+        var appeared = Retry.WhileFalse(
+            HasVisibleMainWindow,
+            timeout ?? DefaultTimeout,
+            TimeSpan.FromMilliseconds(250));
+
+        if (!appeared.Result)
+            LaunchApp();
+    }
+
+    /// <summary>
+    /// Hides the main window to the tray, reproducing the state the app is left in
+    /// after auto-close / Escape / close-to-tray. Used by the harness regression tests.
+    /// </summary>
+    public void HideMainWindow()
+    {
+        var handle = FindTopLevelWindowHandle();
+        if (handle == IntPtr.Zero) return;
+
+        ShowWindow(handle, SW_HIDE);
+        Retry.WhileTrue(HasVisibleMainWindow, DefaultTimeout, TimeSpan.FromMilliseconds(100));
+    }
+
+    /// <summary>
+    /// Finds the app's top-level window by walking the desktop's windows, which -- unlike
+    /// Process.MainWindowHandle -- also finds it while it is hidden.
+    /// </summary>
+    private IntPtr FindTopLevelWindowHandle()
+    {
+        if (_app is null || _app.HasExited) return IntPtr.Zero;
+
+        var targetPid = (uint)_app.ProcessId;
+        var found = IntPtr.Zero;
+
+        EnumWindows((handle, _) =>
+        {
+            GetWindowThreadProcessId(handle, out var pid);
+            if (pid != targetPid) return true;
+
+            var className = new System.Text.StringBuilder(256);
+            GetClassName(handle, className, className.Capacity);
+            if (className.ToString() != MainWindowClassName) return true;
+
+            found = handle;
+            return false;  // Stop enumerating.
+        }, IntPtr.Zero);
+
+        return found;
     }
 
     /// <summary>
@@ -142,7 +231,14 @@ public class AppTestFixture : IDisposable
             () =>
             {
                 if (_app is null || _app.HasExited) return null;
-                var win = _app.GetMainWindow(Automation);
+
+                // The inner wait MUST be bounded. FlaUI's parameterless overload defaults
+                // waitTimeout to TimeSpan.FromMilliseconds(-1) -- infinite -- and blocks
+                // inside this lambda while Process.MainWindowHandle is zero, which it is
+                // whenever the window is hidden to the tray. The outer Retry's timeout is
+                // never evaluated while the lambda is blocked, so the call below is the
+                // only thing bounding this method.
+                var win = _app.GetMainWindow(Automation, TimeSpan.FromMilliseconds(250));
                 return win?.Title?.Contains("BeNGy", StringComparison.OrdinalIgnoreCase) == true
                     ? win
                     : null;
@@ -267,6 +363,25 @@ public class AppTestFixture : IDisposable
     }
 
     private const uint CF_UNICODETEXT = 13;
+
+    /// <summary>WinUI 3 desktop window class -- what MAUI's Windows head creates.</summary>
+    private const string MainWindowClassName = "WinUIDesktopWin32WindowClass";
+
+    private const int SW_HIDE = 0;
+
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder className, int maxCount);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern bool OpenClipboard(IntPtr hWndNewOwner);
