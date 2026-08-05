@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Unattended-run guard rails for the UI suite.
+
+  These tests drive the real desktop, so a wedged test blocks the machine for as
+  long as nobody is watching. That is not hypothetical: AppTestFixture once
+  blocked for 15m01s inside a call whose declared timeout was 5s (FlaUI's
+  parameterless GetMainWindow waits infinitely while the window is hidden), and
+  the run had to be killed by hand.
+
+  Two independent limits, because a single one can be defeated by a hang in the
+  wrong layer:
+
+    blame/CollectDumpOnTestSessionHang  aborts a SINGLE test that stops making
+                                        progress, and writes a dump so the hang
+                                        can be diagnosed after the fact.
+    TestSessionTimeout                  hard ceiling on the WHOLE session, in
+                                        case the runner itself gets stuck.
+
+  Applied automatically: the csproj points RunSettingsFilePath here, so a plain
+  `dotnet test` is guarded without passing the settings flag by hand.
+
+  Reference points for the budgets: the slowest legitimate test is ~25s
+  (ThemeChange_UIReflectsChange_WindowRemainsUsable) and a full green run is
+  roughly 4 minutes.
+-->
+<RunSettings>
+
+  <RunConfiguration>
+    <!-- Hard ceiling for the entire session: 15 minutes. A full run takes ~4. -->
+    <TestSessionTimeout>900000</TestSessionTimeout>
+
+    <!-- The UI suite is serialised through a single app instance anyway. -->
+    <MaxCpuCount>1</MaxCpuCount>
+  </RunConfiguration>
+
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <!--
+        Aborts the run if any single test makes no progress for 2 minutes and
+        writes a process dump. The slowest real test is ~25s, so 2 minutes is
+        roughly 5x headroom and still fails fast enough to leave unattended.
+      -->
+      <DataCollector friendlyName="blame" enabled="True">
+        <Configuration>
+          <CollectDumpOnTestSessionHang TestTimeout="120000" DumpType="Full" />
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+
+</RunSettings>

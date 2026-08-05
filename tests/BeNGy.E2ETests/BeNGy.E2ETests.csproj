@@ -7,6 +7,13 @@
     <IsPackable>false</IsPackable>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <UseWindowsForms>false</UseWindowsForms>
+
+    <!--
+      Applied automatically so an unattended `dotnet test` is always guarded by the
+      hang timebomb, rather than depending on someone remembering to pass the
+      settings flag. See e2e.runsettings for the budgets and why they exist.
+    -->
+    <RunSettingsFilePath>$(MSBuildProjectDirectory)\e2e.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
   <ItemGroup>
