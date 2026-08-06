@@ -4,185 +4,161 @@
              xmlns:vm="clr-namespace:BeNGy.ViewModels"
              x:Class="BeNGy.Views.SettingsPage"
              x:DataType="vm:SettingsViewModel"
-             Title="Settings">
-
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Done" AutomationId="DoneButton" Clicked="OnDoneClicked" SemanticProperties.Description="Done" />
-    </ContentPage.ToolbarItems>
+             Title="Settings"
+             BackgroundColor="Transparent"
+             NavigationPage.HasNavigationBar="False">
 
     <Grid>
-        <!-- Overlay to prevent interaction during capture (M1 Fix) -->
+        <!-- Capture overlay retained from the original page (M1 fix) -->
         <BoxView IsVisible="{Binding IsCapturingHotkey}"
-                 BackgroundColor="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray900}}"
-                 Opacity="0.5"
-                 InputTransparent="False"
-                 ZIndex="10">
+            BackgroundColor="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray900}}"
+            Opacity="0.5"
+            InputTransparent="False"
+            ZIndex="10">
             <BoxView.GestureRecognizers>
                 <TapGestureRecognizer Command="{Binding ChangeHotkeyCommand}" />
             </BoxView.GestureRecognizers>
         </BoxView>
 
-        <ScrollView Padding="20">
-            <VerticalStackLayout Spacing="8">
+        <ScrollView Padding="20,14,20,20">
+            <VerticalStackLayout Spacing="4">
 
-                <!-- Other sections disabled during capture (M1 Fix) -->
-                <VerticalStackLayout Spacing="8" IsEnabled="{Binding IsCapturingHotkey, Converter={StaticResource InvertedBoolConverter}}">
-                    <!-- ── Branch Generation ────────────────────────────── -->
-                    <Label Text="Branch Generation"
-                           FontSize="18"
-                           FontAttributes="Bold"
-                           Margin="0,0,0,8"/>
-
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto">
-                        <Label Text="Default Prefix"
-                               VerticalOptions="Center"/>
-                        <Picker Grid.Column="1"
-                                AutomationId="DefaultPrefixPicker"
-                                SemanticProperties.Description="Default prefix"
-                                ItemsSource="{Binding AvailablePrefixes}"
-                                SelectedItem="{Binding DefaultPrefix}"/>
-                    </Grid>
-
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto" Margin="0,12,0,0">
-                        <Label Text="Title Format"
-                               VerticalOptions="Center"/>
-                        <Picker Grid.Column="1"
-                                AutomationId="TitleFormatPicker"
-                                SemanticProperties.Description="Title format"
-                                ItemsSource="{Binding AvailableTitleFormats}"
-                                SelectedItem="{Binding SelectedTitleFormat}"/>
-                    </Grid>
-
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto" Margin="0,12,0,0">
-                        <Label Text="Prefix/Ticket Separator"
-                               VerticalOptions="Center"/>
-                        <Picker Grid.Column="1"
-                                AutomationId="PrefixSeparatorPicker"
-                                SemanticProperties.Description="Prefix ticket separator"
-                                ItemsSource="{Binding AvailableSeparators}"
-                                SelectedItem="{Binding PrefixTicketSeparator}"/>
-                    </Grid>
-
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto" Margin="0,12,0,0">
-                        <Label Text="Ticket/Title Separator"
-                               VerticalOptions="Center"/>
-                        <Picker Grid.Column="1"
-                                AutomationId="TicketSeparatorPicker"
-                                SemanticProperties.Description="Ticket title separator"
-                                ItemsSource="{Binding AvailableSeparators}"
-                                SelectedItem="{Binding TicketTitleSeparator}"/>
-                    </Grid>
-                </VerticalStackLayout>
-
-                <!-- ── Global Hotkey (Always enabled for Cancel/Capture) ── -->
-                <Label Text="Global Hotkey"
-                       FontSize="18"
-                       FontAttributes="Bold"
-                       Margin="0,20,0,8"/>
-
-                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                    <Label Text="Summon Hotkey"
-                           VerticalOptions="Center"/>
-
-                    <HorizontalStackLayout Grid.Column="1" Spacing="8">
-                        <Border Padding="8,4"
-                                StrokeShape="RoundRectangle 4"
-                                BackgroundColor="{AppThemeBinding Light=#F3F4F6, Dark=#374151}">
-                            <Label Text="{Binding HotkeyDisplay}"
-                                   FontFamily="Consolas"/>
-                        </Border>
-
-                        <Button Text="{Binding ChangeButtonText}"
-                                AutomationId="ChangeHotkeyButton"
-                                SemanticProperties.Description="Change hotkey"
-                                Command="{Binding ChangeHotkeyCommand}"
-                                Padding="8,4"
-                                FontSize="12"/>
-                    </HorizontalStackLayout>
-
-                    <Label Grid.Row="1" Grid.ColumnSpan="2"
-                           Text="{Binding HotkeyError}"
-                           TextColor="#EF4444"
-                           FontSize="12"
-                           IsVisible="{Binding HotkeyError, Converter={StaticResource StringNotEmptyConverter}}"/>
+                <!-- Header: back chevron (same handler as Done) + title -->
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Margin="0,0,0,8">
+                    <Button
+                        AutomationId="DoneButton"
+                        Style="{StaticResource GlyphButton}"
+                        Text="&#xE72B;"
+                        Clicked="OnDoneClicked"
+                        SemanticProperties.Description="Done" />
+                    <Label Grid.Column="1" Text="Settings" FontSize="20" FontAttributes="Bold" VerticalOptions="Center" />
                 </Grid>
 
-                <VerticalStackLayout Spacing="8" IsEnabled="{Binding IsCapturingHotkey, Converter={StaticResource InvertedBoolConverter}}">
-                    <!-- ── Appearance ────────────────────────────────────── -->
-                    <Label Text="Appearance"
-                           FontSize="18"
-                           FontAttributes="Bold"
-                           Margin="0,20,0,8"/>
+                <VerticalStackLayout Spacing="4" IsEnabled="{Binding IsCapturingHotkey, Converter={StaticResource InvertedBoolConverter}}">
+                    <Label Text="BRANCH GENERATION" Style="{StaticResource SectionHeader}" />
+                    <Border Style="{StaticResource SettingsCard}">
+                        <VerticalStackLayout>
+                            <Grid ColumnDefinitions="Auto,*,180" ColumnSpacing="10" HeightRequest="52">
+                                <Label Text="&#xE8AC;" FontFamily="Segoe Fluent Icons" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Default prefix" VerticalOptions="Center" />
+                                <Picker Grid.Column="2" AutomationId="DefaultPrefixPicker"
+                                    SemanticProperties.Description="Default prefix"
+                                    ItemsSource="{Binding AvailablePrefixes}" SelectedItem="{Binding DefaultPrefix}"
+                                    VerticalOptions="Center" />
+                            </Grid>
+                            <BoxView Style="{StaticResource SettingsRowSeparator}" />
+                            <Grid ColumnDefinitions="Auto,*,180" ColumnSpacing="10" HeightRequest="52">
+                                <Label Text="&#xE8D2;" FontFamily="Segoe Fluent Icons" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Title format" VerticalOptions="Center" />
+                                <Picker Grid.Column="2" AutomationId="TitleFormatPicker"
+                                    SemanticProperties.Description="Title format"
+                                    ItemsSource="{Binding AvailableTitleFormats}" SelectedItem="{Binding SelectedTitleFormat}"
+                                    VerticalOptions="Center" />
+                            </Grid>
+                            <BoxView Style="{StaticResource SettingsRowSeparator}" />
+                            <Grid ColumnDefinitions="Auto,*,180" ColumnSpacing="10" HeightRequest="52">
+                                <Label Text="&#xE8A4;" FontFamily="Segoe Fluent Icons" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Prefix / ticket separator" VerticalOptions="Center" />
+                                <Picker Grid.Column="2" AutomationId="PrefixSeparatorPicker"
+                                    SemanticProperties.Description="Prefix ticket separator"
+                                    ItemsSource="{Binding AvailableSeparators}" SelectedItem="{Binding PrefixTicketSeparator}"
+                                    VerticalOptions="Center" />
+                            </Grid>
+                            <BoxView Style="{StaticResource SettingsRowSeparator}" />
+                            <Grid ColumnDefinitions="Auto,*,180" ColumnSpacing="10" HeightRequest="52">
+                                <Label Text="&#xE8A4;" FontFamily="Segoe Fluent Icons" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Ticket / title separator" VerticalOptions="Center" />
+                                <Picker Grid.Column="2" AutomationId="TicketSeparatorPicker"
+                                    SemanticProperties.Description="Ticket title separator"
+                                    ItemsSource="{Binding AvailableSeparators}" SelectedItem="{Binding TicketTitleSeparator}"
+                                    VerticalOptions="Center" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
 
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto">
-                        <Label Text="Theme"
-                               VerticalOptions="Center"/>
-                        <Picker Grid.Column="1"
-                                AutomationId="ThemePicker"
+                <Label Text="GLOBAL HOTKEY" Style="{StaticResource SectionHeader}" />
+                <Border Style="{StaticResource SettingsCard}">
+                    <VerticalStackLayout>
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" HeightRequest="52">
+                            <Label Text="&#xE765;" FontFamily="Segoe Fluent Icons" VerticalOptions="Center" />
+                            <Label Grid.Column="1" Text="Summon hotkey" VerticalOptions="Center" />
+                            <HorizontalStackLayout Grid.Column="2" Spacing="8" VerticalOptions="Center">
+                                <Border Style="{StaticResource KeycapChip}">
+                                    <Label Text="{Binding HotkeyDisplay}" Style="{StaticResource MonoText}" FontSize="12" />
+                                </Border>
+                                <Button Text="{Binding ChangeButtonText}"
+                                    AutomationId="ChangeHotkeyButton"
+                                    SemanticProperties.Description="Change hotkey"
+                                    Command="{Binding ChangeHotkeyCommand}"
+                                    FontSize="12" />
+                            </HorizontalStackLayout>
+                        </Grid>
+                        <Label Text="{Binding HotkeyError}"
+                            Style="{StaticResource Caption}"
+                            TextColor="#EF4444"
+                            IsVisible="{Binding HotkeyError, Converter={StaticResource StringNotEmptyConverter}}"
+                            Margin="0,0,0,8" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <VerticalStackLayout Spacing="4" IsEnabled="{Binding IsCapturingHotkey, Converter={StaticResource InvertedBoolConverter}}">
+                    <Label Text="APPEARANCE" Style="{StaticResource SectionHeader}" />
+                    <Border Style="{StaticResource SettingsCard}">
+                        <Grid ColumnDefinitions="Auto,*,180" ColumnSpacing="10" HeightRequest="52">
+                            <Label Text="&#xE790;" FontFamily="Segoe Fluent Icons" VerticalOptions="Center" />
+                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="0">
+                                <Label Text="Theme" />
+                                <Label Text="'System' follows your Windows theme" Style="{StaticResource Caption}" FontSize="11" />
+                            </VerticalStackLayout>
+                            <Picker Grid.Column="2" AutomationId="ThemePicker"
                                 SemanticProperties.Description="Theme"
-                                ItemsSource="{Binding AvailableThemes}"
-                                SelectedItem="{Binding SelectedThemeString}"/>
-                    </Grid>
+                                ItemsSource="{Binding AvailableThemes}" SelectedItem="{Binding SelectedThemeString}"
+                                VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
 
-                    <Label Text="'System' follows your Windows theme setting"
-                           FontSize="11"
-                           TextColor="Gray"
-                           Margin="0,4,0,0"/>
+                    <Label Text="STARTUP" Style="{StaticResource SectionHeader}" />
+                    <Border Style="{StaticResource SettingsCard}">
+                        <VerticalStackLayout>
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" HeightRequest="52">
+                                <Label Text="&#xE7E8;" FontFamily="Segoe Fluent Icons" VerticalOptions="Center" />
+                                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="0">
+                                    <Label Text="Start with Windows" />
+                                    <Label Text="Launch BeNGy when Windows starts" Style="{StaticResource Caption}" FontSize="11" />
+                                </VerticalStackLayout>
+                                <Switch Grid.Column="2" AutomationId="StartWithWindowsSwitch"
+                                    SemanticProperties.Description="Start with Windows"
+                                    IsToggled="{Binding StartWithWindows}" VerticalOptions="Center" />
+                            </Grid>
+                            <BoxView Style="{StaticResource SettingsRowSeparator}" />
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" HeightRequest="52">
+                                <Label Text="&#xE8A0;" FontFamily="Segoe Fluent Icons" VerticalOptions="Center" />
+                                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="0">
+                                    <Label Text="Start minimized to tray" />
+                                    <Label Text="No window on launch; summon with the hotkey" Style="{StaticResource Caption}" FontSize="11" />
+                                </VerticalStackLayout>
+                                <Switch Grid.Column="2" AutomationId="StartMinimizedSwitch"
+                                    SemanticProperties.Description="Start minimized to tray"
+                                    IsToggled="{Binding StartMinimized}" VerticalOptions="Center" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
 
-                    <!-- ── Startup ───────────────────────────────────────── -->
-                    <Label Text="Startup"
-                           FontSize="18"
-                           FontAttributes="Bold"
-                           Margin="0,20,0,8"/>
-
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
-                        <Label Text="Start with Windows"
-                               VerticalOptions="Center"/>
-                        <Switch Grid.Column="1"
-                                AutomationId="StartWithWindowsSwitch"
-                                SemanticProperties.Description="Start with Windows"
-                                IsToggled="{Binding StartWithWindows}"/>
-                    </Grid>
-                    <Label Text="When enabled, BeNGy starts when Windows starts"
-                           FontSize="11"
-                           TextColor="Gray"
-                           Margin="0,4,0,0"/>
-
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto" Margin="0,12,0,0">
-                        <Label Text="Start minimized to tray"
-                               VerticalOptions="Center"/>
-                        <Switch Grid.Column="1"
-                                AutomationId="StartMinimizedSwitch"
-                                SemanticProperties.Description="Start minimized to tray"
-                                IsToggled="{Binding StartMinimized}"/>
-                    </Grid>
-                    <Label Text="When enabled, BeNGy starts in the system tray without showing a window"
-                           FontSize="11"
-                           TextColor="Gray"
-                           Margin="0,4,0,0"/>
-
-                    <!-- ── Behavior ──────────────────────────────────────── -->
-                    <Label Text="Behavior"
-                           FontSize="18"
-                           FontAttributes="Bold"
-                           Margin="0,20,0,8"/>
-
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
-                        <Label Text="Auto-close delay"
-                               VerticalOptions="Center"/>
-
-                        <Picker Grid.Column="1"
-                                AutomationId="AutoCloseDelayPicker"
+                    <Label Text="BEHAVIOR" Style="{StaticResource SectionHeader}" />
+                    <Border Style="{StaticResource SettingsCard}">
+                        <Grid ColumnDefinitions="Auto,*,180" ColumnSpacing="10" HeightRequest="52">
+                            <Label Text="&#xE916;" FontFamily="Segoe Fluent Icons" VerticalOptions="Center" />
+                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="0">
+                                <Label Text="Auto-close delay" />
+                                <Label Text="{Binding AutoCloseDelayLabel}" Style="{StaticResource Caption}" FontSize="11" />
+                            </VerticalStackLayout>
+                            <Picker Grid.Column="2" AutomationId="AutoCloseDelayPicker"
                                 SemanticProperties.Description="Auto-close delay"
-                                ItemsSource="{Binding DelayOptions}"
-                                SelectedItem="{Binding SelectedDelayOption}"/>
-
-                        <Label Grid.Row="1" Grid.ColumnSpan="2"
-                               Text="{Binding AutoCloseDelayLabel}"
-                               FontSize="11"
-                               TextColor="Gray"
-                               Margin="0,4,0,0"/>
-                    </Grid>
+                                ItemsSource="{Binding DelayOptions}" SelectedItem="{Binding SelectedDelayOption}"
+                                VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
                 </VerticalStackLayout>
 
             </VerticalStackLayout>
