@@ -29,7 +29,13 @@
 param(
     # Maximum minutes to wait for the run before giving up. The suite itself is
     # capped at 15 minutes by e2e.runsettings; boot adds about a minute.
-    [int]$TimeoutMinutes = 25
+    [int]$TimeoutMinutes = 25,
+
+    # Keep the sandbox VM open after the run for manual inspection. Default is
+    # to close it: a forgotten open sandbox makes the next invocation throw
+    # "already running", and it is easy to then misread the previous run's TRX
+    # as the new result.
+    [switch]$KeepOpen
 )
 
 $ErrorActionPreference = 'Stop'
@@ -158,6 +164,11 @@ if (Test-Path $trx) {
     Write-Warning "Run finished but no TRX was produced. See $work\test-output.txt"
 }
 
-# The sandbox stays open for inspection; close its window to discard the VM.
+if (-not $KeepOpen) {
+    Get-Process WindowsSandbox* -ErrorAction SilentlyContinue | ForEach-Object {
+        try { $_.CloseMainWindow() | Out-Null; if (-not $_.WaitForExit(5000)) { $_.Kill() } } catch { }
+    }
+}
+
 $guestExit = ((Get-Content $doneFile) -replace 'exit=', '')
 exit ([int]$guestExit)
