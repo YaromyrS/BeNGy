@@ -13,8 +13,10 @@ public class K {
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
     [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr h, int a, out RECT r, int c);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+    [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
     public const byte VK_CONTROL = 0x11, VK_SHIFT = 0x10, VK_B = 0x42;
     public const uint KEYUP = 0x0002;
+    public const uint PW_RENDERFULLCONTENT = 3; // includes DX/composition content
 }
 "@
 [void][K]::SetProcessDPIAware()
@@ -38,8 +40,22 @@ Start-Sleep -Milliseconds 900
 $r = New-Object K+RECT
 if ([K]::DwmGetWindowAttribute($p.MainWindowHandle, 9, [ref]$r, [System.Runtime.InteropServices.Marshal]::SizeOf($r)) -ne 0) { [void][K]::GetWindowRect($p.MainWindowHandle, [ref]$r) }
 $w = $r.Right - $r.Left; $h = $r.Bottom - $r.Top
+# PrintWindow captures the window's OWN surface, so overlapping windows on a
+# busy desktop cannot contaminate the shot (CopyFromScreen photographs whatever
+# is topmost). PW_RENDERFULLCONTENT is required for composition/DirectX content.
 $bmp = New-Object System.Drawing.Bitmap($w, $h)
 $g = [System.Drawing.Graphics]::FromImage($bmp)
-$g.CopyFromScreen($r.Left, $r.Top, 0, 0, (New-Object System.Drawing.Size($w, $h)))
-$g.Dispose(); $bmp.Save($Out, [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
-"captured ${w}x${h} -> $Out"
+$hdc = $g.GetHdc()
+$ok = [K]::PrintWindow($p.MainWindowHandle, $hdc, [K]::PW_RENDERFULLCONTENT)
+$g.ReleaseHdc($hdc)
+$g.Dispose()
+if (-not $ok) {
+    # Fallback: screen copy (may include occluding windows).
+    $bmp.Dispose()
+    $bmp = New-Object System.Drawing.Bitmap($w, $h)
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.CopyFromScreen($r.Left, $r.Top, 0, 0, (New-Object System.Drawing.Size($w, $h)))
+    $g.Dispose()
+}
+$bmp.Save($Out, [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
+"captured ${w}x${h} -> $Out (printwindow=$ok)"
