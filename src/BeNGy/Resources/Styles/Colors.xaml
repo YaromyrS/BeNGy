@@ -40,4 +40,38 @@
 	<SolidColorBrush x:Key="Gray600Brush" Color="{StaticResource Gray600}" />
 	<SolidColorBrush x:Key="Gray900Brush" Color="{StaticResource Gray900}" />
 	<SolidColorBrush x:Key="Gray950Brush" Color="{StaticResource Gray950}" />
+
+	<!-- ── Fluent tokens (PowerToys palette redesign) ─────────────────
+	     Accent* are FALLBACKS: SystemAccent.Apply() replaces them at
+	     startup with the Windows accent color. Consume via DynamicResource. -->
+	<Color x:Key="Accent">#0067C0</Color>
+	<Color x:Key="AccentHover">#1975C5</Color>
+	<Color x:Key="AccentPressed">#005FB8</Color>
+	<Color x:Key="AccentForeground">#FFFFFF</Color>
+
+	<Color x:Key="TextPrimary">#1B1B1B</Color>
+	<Color x:Key="TextPrimaryDark">#FFFFFF</Color>
+	<Color x:Key="TextSecondary">#5D5D5D</Color>
+	<Color x:Key="TextSecondaryDark">#C5C5C5</Color>
+
+	<Color x:Key="CardBackground">#B3FFFFFF</Color>
+	<Color x:Key="CardBackgroundDark">#0DFFFFFF</Color>
+	<Color x:Key="CardStroke">#0F000000</Color>
+	<Color x:Key="CardStrokeDark">#14FFFFFF</Color>
+	<Color x:Key="InputBackground">#CCFFFFFF</Color>
+	<Color x:Key="InputBackgroundDark">#14FFFFFF</Color>
+
+	<Color x:Key="WarningBackground">#FFF4CE</Color>
+	<Color x:Key="WarningBackgroundDark">#433519</Color>
+	<Color x:Key="WarningText">#9D5D00</Color>
+	<Color x:Key="WarningTextDark">#FCE100</Color>
+	<Color x:Key="SuccessText">#0F7B0F</Color>
+	<Color x:Key="SuccessTextDark">#6CCB5F</Color>
+
+	<Color x:Key="KeycapFill">#F3F4F6</Color>
+	<Color x:Key="KeycapFillDark">#374151</Color>
+
+	<!-- Used when the composition backdrop is unavailable -->
+	<Color x:Key="PageFallback">#F3F3F3</Color>
+	<Color x:Key="PageFallbackDark">#202020</Color>
 </ResourceDictionary>
