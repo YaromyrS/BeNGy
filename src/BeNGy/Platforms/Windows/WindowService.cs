@@ -68,8 +68,28 @@ public class WindowService : IWindowService
 
         SetPaletteSize(settings: false);
 
+        // The acrylic/mica tint and WinUI control themes key off the native
+        // root's RequestedTheme, which does NOT track MAUI's UserAppTheme
+        // override. Without this, "app Light on Windows dark" renders light
+        // text tokens over a dark backdrop -- unreadable.
+        if (Microsoft.Maui.Controls.Application.Current is { } app)
+        {
+            ApplyNativeTheme(app);
+            app.RequestedThemeChanged += (_, _) => ApplyNativeTheme(app);
+        }
+
         // Intercept close button: hide instead of close
         _appWindow.Closing += OnWindowClosing;
+    }
+
+    private void ApplyNativeTheme(Microsoft.Maui.Controls.Application app)
+    {
+        if (_nativeWindow?.Content is Microsoft.UI.Xaml.FrameworkElement root)
+        {
+            root.RequestedTheme = app.RequestedTheme == AppTheme.Dark
+                ? Microsoft.UI.Xaml.ElementTheme.Dark
+                : Microsoft.UI.Xaml.ElementTheme.Light;
+        }
     }
 
     public void SetPaletteSize(bool settings)
