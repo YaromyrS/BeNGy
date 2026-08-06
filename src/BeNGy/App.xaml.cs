@@ -27,6 +27,9 @@ public partial class App : Application
 		ILogger<App>? logger = null)
 	{
 		InitializeComponent();
+#if WINDOWS
+		BeNGy.Platforms.Windows.SystemAccent.Apply(Resources);
+#endif
 		_trayService = trayService;
 		_windowService = windowService;
 		_hotkeyService = hotkeyService;
