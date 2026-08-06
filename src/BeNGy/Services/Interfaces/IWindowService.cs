@@ -25,4 +25,11 @@ public interface IWindowService
     /// Centers the window on the primary monitor work area.
     /// </summary>
     void CenterOnScreen();
+
+    /// <summary>
+    /// Switches the palette between its two fixed sizes: the compact main
+    /// form and the taller settings page. Also recenters (PowerToys Run
+    /// position: horizontally centered, top at ~25% of the work area).
+    /// </summary>
+    void SetPaletteSize(bool settings);
 }

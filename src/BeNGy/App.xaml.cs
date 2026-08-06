@@ -55,7 +55,10 @@ public partial class App : Application
 				services?.GetService<IWindowService>()!);
 
 		var mainPage = new MainPage(viewModel);
-		_mainWindow = new Window(new NavigationPage(mainPage)) { Title = "BeNGy" };
+		var nav = new NavigationPage(mainPage);
+		// Palette shrinks back to the compact size when Settings pops.
+		nav.Popped += (_, _) => _windowService?.SetPaletteSize(settings: false);
+		_mainWindow = new Window(nav) { Title = "BeNGy" };
 
 		_mainWindow.Created += (_, _) => OnWindowCreated();
 
@@ -191,6 +194,9 @@ public partial class App : Application
 			
 			if (settingsVm != null && _mainWindow?.Page != null)
 			{
+				// Grow the palette for the settings page BEFORE the push so the
+				// transition never shows clipped content.
+				_windowService?.SetPaletteSize(settings: true);
 				// Push instead of swap to allow "Back" button (C1 Fix)
 				await _mainWindow.Page.Navigation.PushAsync(new SettingsPage(settingsVm));
 				_windowService?.ShowWindow();
