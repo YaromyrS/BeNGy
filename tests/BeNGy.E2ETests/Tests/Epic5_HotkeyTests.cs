@@ -27,14 +27,12 @@ public class Epic5_HotkeyTests
     [Fact]
     public void GlobalHotkey_CtrlShiftB_SummonsWindowWhenMinimized() // FR3
     {
-        // Arrange - get the main window and minimize it
+        // Arrange - hide the window to the tray. The palette window is not
+        // minimizable (borderless chrome, by design); UIA SetWindowVisualState
+        // throws InvalidOperationException on it. Tray-hide is the app's real
+        // resting state and the state the hotkey actually summons from.
         _fixture.EnsureRunning();
-        var window = _fixture.GetMainWindow();
-        Assert.NotNull(window);
-
-        // Minimize the window (simulates minimized-to-tray behaviour)
-        window.Patterns.Window.PatternOrDefault?.SetWindowVisualState(
-            FlaUI.Core.Definitions.WindowVisualState.Minimized);
+        _fixture.HideMainWindow();
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
         // Act - send global hotkey Ctrl+Shift+B
@@ -68,11 +66,9 @@ public class Epic5_HotkeyTests
     [Fact]
     public void GlobalHotkey_AfterSummon_TicketFieldHasFocus() // FR3, FR28
     {
-        // Arrange - minimize the window
+        // Arrange - hide to tray (the palette is not minimizable by design)
         _fixture.EnsureRunning();
-        var window = _fixture.GetMainWindow();
-        window.Patterns.Window.PatternOrDefault?.SetWindowVisualState(
-            FlaUI.Core.Definitions.WindowVisualState.Minimized);
+        _fixture.HideMainWindow();
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
         // Act - send Ctrl+Shift+B to summon
@@ -100,11 +96,9 @@ public class Epic5_HotkeyTests
     [Fact]
     public void GlobalHotkey_WindowAppearsWithinTwoSeconds() // FR3, FR31
     {
-        // Arrange - minimize window
+        // Arrange - hide to tray (the palette is not minimizable by design)
         _fixture.EnsureRunning();
-        var window = _fixture.GetMainWindow();
-        window.Patterns.Window.PatternOrDefault?.SetWindowVisualState(
-            FlaUI.Core.Definitions.WindowVisualState.Minimized);
+        _fixture.HideMainWindow();
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
         // Act - time the hotkey response
@@ -141,11 +135,9 @@ public class Epic5_HotkeyTests
     [Fact]
     public void TrayIcon_OpenMenuItem_ShowsWindow() // FR3, FR31
     {
-        // Arrange - get main window and minimize it
+        // Arrange - hide to tray (the palette is not minimizable by design)
         _fixture.EnsureRunning();
-        var window = _fixture.GetMainWindow();
-        window.Patterns.Window.PatternOrDefault?.SetWindowVisualState(
-            FlaUI.Core.Definitions.WindowVisualState.Minimized);
+        _fixture.HideMainWindow();
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
         // Act - find the system tray and open via context menu
