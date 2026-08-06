@@ -57,6 +57,10 @@ public static class MauiProgram
 		builder.Logging.AddDebug();
 #endif
 
+#if WINDOWS
+		BeNGy.Platforms.Windows.FluentHandlers.Register();
+#endif
+
 		return builder.Build();
 	}
 }
