@@ -23,9 +23,14 @@ public partial class MainPage : ContentPage
 	{
 		base.OnAppearing();
 
-		// Visual Polish (Story 7.2): simple fade-in transition
+		// Palette entrance: fade + rise + settle, PowerToys Run-style.
 		this.Opacity = 0;
-		this.FadeTo(1, 250, Easing.CubicIn);
+		this.TranslationY = 8;
+		this.Scale = 0.98;
+		_ = Task.WhenAll(
+			this.FadeTo(1, 120, Easing.CubicOut),
+			this.TranslateTo(0, 0, 120, Easing.CubicOut),
+			this.ScaleTo(1, 120, Easing.CubicOut));
 
 		// Auto-focus ticket field when window appears (NFR12)
 		Dispatcher.Dispatch(() =>
