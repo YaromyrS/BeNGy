@@ -12,12 +12,16 @@
 	<ScrollView>
 		<VerticalStackLayout Spacing="12" Padding="20,14,20,20">
 
-			<!-- Header: wordmark + empty space double as the drag region -->
+			<!-- Header: wordmark + empty stretch is the drag region. The
+			     recognizer must NOT cover the buttons: starting the native
+			     move loop on pointer-down would swallow their clicks. -->
 			<Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
-				<Grid.GestureRecognizers>
-					<PointerGestureRecognizer PointerPressed="OnHeaderPointerPressed" />
-				</Grid.GestureRecognizers>
-				<Label Text="BeNGy" Style="{StaticResource PaletteTitle}" VerticalOptions="Center" />
+				<Grid BackgroundColor="Transparent">
+					<Grid.GestureRecognizers>
+						<PointerGestureRecognizer PointerPressed="OnHeaderPointerPressed" />
+					</Grid.GestureRecognizers>
+					<Label Text="BeNGy" Style="{StaticResource PaletteTitle}" VerticalOptions="Center" />
+				</Grid>
 				<Button Grid.Column="1"
 					AutomationId="SettingsButton"
 					Style="{StaticResource GlyphButton}"
