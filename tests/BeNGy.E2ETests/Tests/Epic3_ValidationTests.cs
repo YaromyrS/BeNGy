@@ -40,9 +40,10 @@ public class Epic3_ValidationTests
         _fixture.TypeText(titleEntry, "valid-title");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Assert — the warning InfoBar must not be visible
-        var warningSection = _fixture.FindByAutomationId(window, AutomationIds.ValidationWarningSection);
-        Assert.True(warningSection is null || warningSection.IsOffscreen,
+        // Assert — no warning UI. The InfoBar container itself has no UIA peer
+        // (WinUI Border/panels don't), so anchor on the message label inside it.
+        var warningMessage = _fixture.FindByAutomationId(window, AutomationIds.ValidationMessageLabel);
+        Assert.True(warningMessage is null || warningMessage.IsOffscreen,
             "No warning UI should be shown for valid input.");
     }
 
@@ -57,10 +58,11 @@ public class Epic3_ValidationTests
         _fixture.TypeText(titleEntry, "bad?title");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Assert — the warning InfoBar should be visible
-        var warningSection = _fixture.WaitForElement(window, AutomationIds.ValidationWarningSection);
-        Assert.NotNull(warningSection);
-        Assert.False(warningSection.IsOffscreen,
+        // Assert — the warning InfoBar should be visible. Anchor on the message
+        // label inside it: the container itself has no UIA peer.
+        var warningMessage = _fixture.WaitForElement(window, AutomationIds.ValidationMessageLabel);
+        Assert.NotNull(warningMessage);
+        Assert.False(warningMessage.IsOffscreen,
             "Warning InfoBar should be visible for invalid input.");
     }
 
@@ -126,16 +128,16 @@ public class Epic3_ValidationTests
         _fixture.TypeText(titleEntry, "bad?title");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Verify warning is showing
-        var warningSection = _fixture.WaitForElement(window, AutomationIds.ValidationWarningSection);
-        Assert.False(warningSection.IsOffscreen);
+        // Verify warning is showing (via the message label; the container has no UIA peer)
+        var warningMessage = _fixture.WaitForElement(window, AutomationIds.ValidationMessageLabel);
+        Assert.False(warningMessage.IsOffscreen);
 
         // Act — fix the input
         _fixture.TypeText(titleEntry, "good-title");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
         // Assert — the warning disappears; valid input shows no verdict UI
-        var warningAfter = _fixture.FindByAutomationId(window, AutomationIds.ValidationWarningSection);
+        var warningAfter = _fixture.FindByAutomationId(window, AutomationIds.ValidationMessageLabel);
         Assert.True(warningAfter is null || warningAfter.IsOffscreen,
             "Warning should disappear once the input is fixed.");
     }

@@ -97,9 +97,10 @@
 			<Border
 				Style="{StaticResource WarningInfoBar}"
 				IsVisible="{Binding IsValid, Converter={toolkit:InvertedBoolConverter}}">
-				<!-- The AutomationId lives on the Grid, not the Border: MAUI's
-				     Border maps to a WinUI element without an automation peer,
-				     so UIA cannot find it by id. Layouts do get peers. -->
+				<!-- Neither Border nor panels get WinUI automation peers, so this
+				     container is NOT findable by UIA id — tests must anchor on the
+				     Labels inside (e.g. ValidationMessageLabel). The id stays for
+				     tree-walking tools that use the raw view. -->
 				<Grid AutomationId="ValidationWarningSection" ColumnDefinitions="Auto,*" ColumnSpacing="10">
 					<Label Text="&#xE7BA;"
 						FontFamily="Segoe Fluent Icons"
