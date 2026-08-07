@@ -96,9 +96,11 @@
 			     AutomationId inside survives for the E2E assertions. -->
 			<Border
 				Style="{StaticResource WarningInfoBar}"
-				AutomationId="ValidationWarningSection"
 				IsVisible="{Binding IsValid, Converter={toolkit:InvertedBoolConverter}}">
-				<Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+				<!-- The AutomationId lives on the Grid, not the Border: MAUI's
+				     Border maps to a WinUI element without an automation peer,
+				     so UIA cannot find it by id. Layouts do get peers. -->
+				<Grid AutomationId="ValidationWarningSection" ColumnDefinitions="Auto,*" ColumnSpacing="10">
 					<Label Text="&#xE7BA;"
 						FontFamily="Segoe Fluent Icons"
 						FontSize="16"
