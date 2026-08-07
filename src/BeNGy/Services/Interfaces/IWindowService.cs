@@ -1,6 +1,18 @@
 namespace BeNGy.Services.Interfaces;
 
 /// <summary>
+/// The palette's fixed window surfaces. The window hugs its content: the main
+/// form is compact, grows when the validation InfoBar appears, and grows
+/// further for the settings page.
+/// </summary>
+public enum PaletteSurface
+{
+    Main,
+    MainExpanded,
+    Settings,
+}
+
+/// <summary>
 /// Abstraction for main window visibility management.
 /// Platform implementations handle native window show/hide/center behavior.
 /// </summary>
@@ -27,9 +39,8 @@ public interface IWindowService
     void CenterOnScreen();
 
     /// <summary>
-    /// Switches the palette between its two fixed sizes: the compact main
-    /// form and the taller settings page. Also recenters (PowerToys Run
-    /// position: horizontally centered, top at ~25% of the work area).
+    /// Resizes the palette to the given surface. Resize only — the window's
+    /// position is the user's business once they have dragged it somewhere.
     /// </summary>
-    void SetPaletteSize(bool settings);
+    void SetPaletteSize(PaletteSurface surface);
 }

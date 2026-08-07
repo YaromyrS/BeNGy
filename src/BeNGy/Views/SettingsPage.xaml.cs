@@ -84,6 +84,20 @@ public partial class SettingsPage : ContentPage
 
     private async void OnDoneClicked(object sender, EventArgs e)
     {
-        await Navigation.PopAsync();
+        // No slide animation — the palette snaps between surfaces.
+        await Navigation.PopAsync(animated: false);
+    }
+
+    private void OnHeaderPointerPressed(object sender, PointerEventArgs e)
+    {
+#if WINDOWS
+        // Chromeless window: hand the drag to Windows' native move loop.
+        if (Window?.Handler?.PlatformView is Microsoft.UI.Xaml.Window native)
+        {
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(native);
+            Helpers.NativeMethods.ReleaseCapture();
+            Helpers.NativeMethods.SendMessage(hwnd, Helpers.NativeMethods.WM_NCLBUTTONDOWN, Helpers.NativeMethods.HTCAPTION, IntPtr.Zero);
+        }
+#endif
     }
 }

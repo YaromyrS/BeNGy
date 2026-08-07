@@ -20,6 +20,20 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool SetForegroundWindow(IntPtr hWnd);
 
+    // ── Borderless window dragging ────────────────────────────────
+    // A chromeless palette has no title bar; sending WM_NCLBUTTONDOWN with
+    // HTCAPTION makes Windows run its native move loop as if one existed.
+
+    internal const uint WM_NCLBUTTONDOWN = 0x00A1;
+    internal static readonly IntPtr HTCAPTION = new(2);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool ReleaseCapture();
+
+    [DllImport("user32.dll")]
+    internal static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
     // ── Global hotkey (Epic 5) ────────────────────────────────────
 
     [DllImport("user32.dll", SetLastError = true)]

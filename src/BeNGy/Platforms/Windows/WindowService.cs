@@ -17,12 +17,13 @@ public class WindowService : IWindowService
 
     private const int PaletteWidth = 560;
 
-    // Palette hugs its content; the taller size fits the settings cards. Both
-    // must fit EVERY control including the validation warning rows -- an
-    // undersized window once left the Copy button laid out past the bottom
-    // edge, invisible and unclickable, while UI Automation still Invoked it
-    // happily (see LayoutFitTests).
-    private const int MainHeight = 400;
+    // Palette hugs its content; MainExpanded adds room for the validation
+    // InfoBar, Settings for the card list. Every surface must fit EVERY
+    // control it can show -- an undersized window once left the Copy button
+    // laid out past the bottom edge, invisible and unclickable, while UI
+    // Automation still Invoked it happily (see LayoutFitTests).
+    private const int MainHeight = 300;
+    private const int MainExpandedHeight = 410;
     private const int SettingsHeight = 620;
 
     // DWM window corner preference (Win11): 33 = DWMWA_WINDOW_CORNER_PREFERENCE, 2 = DWMWCP_ROUND
@@ -66,7 +67,8 @@ public class WindowService : IWindowService
                     ? new Microsoft.UI.Xaml.Media.MicaBackdrop()
                     : null;
 
-        SetPaletteSize(settings: false);
+        SetPaletteSize(PaletteSurface.Main);
+        PositionPalette();   // initial placement only; afterwards position belongs to the user
 
         // The acrylic/mica tint and WinUI control themes key off the native
         // root's RequestedTheme, which does NOT track MAUI's UserAppTheme
@@ -92,11 +94,19 @@ public class WindowService : IWindowService
         }
     }
 
-    public void SetPaletteSize(bool settings)
+    public void SetPaletteSize(PaletteSurface surface)
     {
         if (_appWindow is null) return;
-        _appWindow.Resize(new SizeInt32(PaletteWidth, settings ? SettingsHeight : MainHeight));
-        PositionPalette();
+        var height = surface switch
+        {
+            PaletteSurface.Settings => SettingsHeight,
+            PaletteSurface.MainExpanded => MainExpandedHeight,
+            _ => MainHeight,
+        };
+        // Resize only: once the user drags the palette somewhere, that position
+        // is theirs. Growth is anchored top-left (downward), which reads
+        // naturally for the InfoBar and the settings page alike.
+        _appWindow.Resize(new SizeInt32(PaletteWidth, height));
     }
 
     /// <summary>PowerToys Run position: centered horizontally, top at 25% of the work area.</summary>
@@ -113,7 +123,6 @@ public class WindowService : IWindowService
     {
         if (_nativeWindow == null || _appWindow == null) return;
 
-        PositionPalette();
         _appWindow.Show();
 
         // Restore from minimized state (taskbar) before activating

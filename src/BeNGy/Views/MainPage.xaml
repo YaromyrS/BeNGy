@@ -12,8 +12,11 @@
 	<ScrollView>
 		<VerticalStackLayout Spacing="12" Padding="20,14,20,20">
 
-			<!-- Header: quiet wordmark left, gear right (replaces the ToolbarItem) -->
-			<Grid ColumnDefinitions="*,Auto">
+			<!-- Header: wordmark + empty space double as the drag region -->
+			<Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
+				<Grid.GestureRecognizers>
+					<PointerGestureRecognizer PointerPressed="OnHeaderPointerPressed" />
+				</Grid.GestureRecognizers>
 				<Label Text="BeNGy" Style="{StaticResource PaletteTitle}" VerticalOptions="Center" />
 				<Button Grid.Column="1"
 					AutomationId="SettingsButton"
@@ -21,6 +24,13 @@
 					Text="&#xE713;"
 					Clicked="OnSettingsClicked"
 					SemanticProperties.Description="Settings" />
+				<Button Grid.Column="2"
+					AutomationId="CloseButton"
+					Style="{StaticResource GlyphButton}"
+					FontSize="13"
+					Text="&#xE8BB;"
+					Command="{Binding DismissCommand}"
+					SemanticProperties.Description="Close to tray" />
 			</Grid>
 
 			<!-- Input row: prefix + ticket side by side -->
@@ -36,7 +46,7 @@
 					AutomationId="TicketEntry"
 					SemanticProperties.Description="Ticket number"
 					Text="{Binding TicketNumber}"
-					Placeholder="Ticket / issue — PROJ-1234"
+					Placeholder="EXP-123"
 					Keyboard="Plain"
 					ReturnType="Next" />
 			</Grid>
@@ -46,7 +56,7 @@
 				AutomationId="TitleEntry"
 				SemanticProperties.Description="Branch title"
 				Text="{Binding Title}"
-				Placeholder="Title — Add OAuth login flow"
+				Placeholder="Ticket Title"
 				Keyboard="Plain"
 				ReturnType="Done"
 				ReturnCommand="{Binding CopyCommand}" />
@@ -67,48 +77,16 @@
 				</Label>
 			</Border>
 
-			<!-- Status left, primary action right -->
-			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-				<HorizontalStackLayout
-					AutomationId="ValidationStatusRow"
-					IsVisible="{Binding HasBranchName}"
-					Spacing="6"
-					VerticalOptions="Center">
-					<Label
-						AutomationId="ValidIndicator"
-						SemanticProperties.Description="Valid branch name"
-						Text="&#xE73E;"
-						FontFamily="Segoe Fluent Icons"
-						FontSize="14"
-						TextColor="{AppThemeBinding Light={StaticResource SuccessText}, Dark={StaticResource SuccessTextDark}}"
-						IsVisible="{Binding IsValid}"
-						VerticalOptions="Center" />
-					<Label
-						AutomationId="InvalidIndicator"
-						SemanticProperties.Description="Invalid branch name"
-						Text="&#xE7BA;"
-						FontFamily="Segoe Fluent Icons"
-						FontSize="14"
-						TextColor="{AppThemeBinding Light={StaticResource WarningText}, Dark={StaticResource WarningTextDark}}"
-						IsVisible="{Binding IsValid, Converter={toolkit:InvertedBoolConverter}}"
-						VerticalOptions="Center" />
-					<Label
-						AutomationId="ValidationStatusLabel"
-						SemanticProperties.Description="Validation status"
-						Style="{StaticResource Caption}"
-						Text="{Binding IsValid, Converter={StaticResource ValidationStatusConverter}}"
-						TextColor="{Binding IsValid, Converter={StaticResource ValidationColorConverter}}"
-						VerticalOptions="Center" />
-				</HorizontalStackLayout>
-
-				<Button Grid.Column="1"
-					x:Name="CopyButton"
-					AutomationId="CopyButton"
-					SemanticProperties.Description="Copy branch name to clipboard"
-					Style="{StaticResource AccentButton}"
-					Text="{Binding CopyButtonText}"
-					Command="{Binding CopyCommand}" />
-			</Grid>
+			<!-- Primary action only. A valid form shows no verdict at all:
+			     validity is the default state; only problems get pixels. -->
+			<Button
+				x:Name="CopyButton"
+				AutomationId="CopyButton"
+				SemanticProperties.Description="Copy branch name to clipboard"
+				Style="{StaticResource AccentButton}"
+				Text="{Binding CopyButtonText}"
+				Command="{Binding CopyCommand}"
+				HorizontalOptions="End" />
 
 			<!-- One amber InfoBar replaces the loose warning labels; every
 			     AutomationId inside survives for the E2E assertions. -->

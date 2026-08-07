@@ -1,22 +1,53 @@
-﻿namespace BeNGy.Views;
+﻿using BeNGy.Services.Interfaces;
+
+namespace BeNGy.Views;
 
 public partial class MainPage : ContentPage
 {
 	private readonly MainViewModel _viewModel;
+	private readonly IWindowService? _windowService;
 
-	public MainPage(MainViewModel viewModel)
+	public MainPage(MainViewModel viewModel, IWindowService? windowService = null)
 	{
 		InitializeComponent();
 		_viewModel = viewModel;
+		_windowService = windowService;
 		BindingContext = viewModel;
 
 		// Tab from Ticket → Title via Return key (NFR11)
 		TicketEntry.Completed += (_, _) => TitleEntry.Focus();
+
+		// The palette hugs its content: grow when the validation InfoBar
+		// appears, shrink back when the input becomes valid again.
+		_viewModel.PropertyChanged += (_, e) =>
+		{
+			if (e.PropertyName is nameof(MainViewModel.IsValid) or nameof(MainViewModel.HasBranchName))
+				UpdateSurface();
+		};
+	}
+
+	private void UpdateSurface()
+	{
+		var expanded = _viewModel.HasBranchName && !_viewModel.IsValid;
+		_windowService?.SetPaletteSize(expanded ? PaletteSurface.MainExpanded : PaletteSurface.Main);
 	}
 
 	private void OnSettingsClicked(object sender, EventArgs e)
 	{
 		(Application.Current as App)?.OpenSettings();
+	}
+
+	private void OnHeaderPointerPressed(object sender, PointerEventArgs e)
+	{
+#if WINDOWS
+		// Chromeless window: hand the drag to Windows' native move loop.
+		if (Window?.Handler?.PlatformView is Microsoft.UI.Xaml.Window native)
+		{
+			var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(native);
+			Helpers.NativeMethods.ReleaseCapture();
+			Helpers.NativeMethods.SendMessage(hwnd, Helpers.NativeMethods.WM_NCLBUTTONDOWN, Helpers.NativeMethods.HTCAPTION, IntPtr.Zero);
+		}
+#endif
 	}
 
 	protected override void OnAppearing()
@@ -31,6 +62,9 @@ public partial class MainPage : ContentPage
 			this.FadeTo(1, 120, Easing.CubicOut),
 			this.TranslateTo(0, 0, 120, Easing.CubicOut),
 			this.ScaleTo(1, 120, Easing.CubicOut));
+
+		// Returning from Settings (or first show): pick the right compact surface.
+		UpdateSurface();
 
 		// Auto-focus ticket field when window appears (NFR12)
 		Dispatcher.Dispatch(() =>

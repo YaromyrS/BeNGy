@@ -224,11 +224,12 @@ public class SettingsViewModelTests
     // ── Story 6.7: Auto-Close Delay ───────────────────────────────
 
     [Fact]
-    public void SelectedDelayOption_DefaultsTo500()
+    public void SelectedDelayOption_DefaultsToFast200()
     {
+        // Palette redesign feedback: auto-close should be fast by default.
         var vm = CreateVm();
 
-        Assert.Equal(500, vm.SelectedDelayOption.Value);
+        Assert.Equal(200, vm.SelectedDelayOption.Value);
     }
 
     [Fact]
@@ -269,7 +270,7 @@ public class SettingsViewModelTests
     {
         var vm = CreateVm();
 
-        Assert.Contains("500ms", vm.AutoCloseDelayLabel);
+        Assert.Contains("200ms", vm.AutoCloseDelayLabel);
     }
 
     [Fact]

@@ -24,8 +24,11 @@ public class Epic3_ValidationTests
     }
 
     [Fact]
-    public void Validation_ValidInput_ShowsGreenValidIndicator() // FR12
+    public void Validation_ValidInput_ShowsNoWarning() // FR12
     {
+        // Valid is the default state and gets no verdict UI at all (user
+        // decision during the palette redesign) — only problems get pixels.
+
         // Arrange
         var window = GetWindow();
         var ticketEntry = _fixture.WaitForElement(window, AutomationIds.TicketEntry);
@@ -37,15 +40,14 @@ public class Epic3_ValidationTests
         _fixture.TypeText(titleEntry, "valid-title");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Assert — valid indicator should be visible
-        var validIndicator = _fixture.FindByAutomationId(window, AutomationIds.ValidIndicator);
-        Assert.NotNull(validIndicator);
-        Assert.False(validIndicator.IsOffscreen,
-            "Valid indicator should be visible for valid input.");
+        // Assert — the warning InfoBar must not be visible
+        var warningSection = _fixture.FindByAutomationId(window, AutomationIds.ValidationWarningSection);
+        Assert.True(warningSection is null || warningSection.IsOffscreen,
+            "No warning UI should be shown for valid input.");
     }
 
     [Fact]
-    public void Validation_InvalidCharacter_ShowsAmberWarningIndicator() // FR12
+    public void Validation_InvalidCharacter_ShowsWarningInfoBar() // FR12
     {
         // Arrange
         var window = GetWindow();
@@ -55,11 +57,11 @@ public class Epic3_ValidationTests
         _fixture.TypeText(titleEntry, "bad?title");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Assert — invalid indicator should be visible
-        var invalidIndicator = _fixture.FindByAutomationId(window, AutomationIds.InvalidIndicator);
-        Assert.NotNull(invalidIndicator);
-        Assert.False(invalidIndicator.IsOffscreen,
-            "Invalid/warning indicator should be visible for invalid input.");
+        // Assert — the warning InfoBar should be visible
+        var warningSection = _fixture.WaitForElement(window, AutomationIds.ValidationWarningSection);
+        Assert.NotNull(warningSection);
+        Assert.False(warningSection.IsOffscreen,
+            "Warning InfoBar should be visible for invalid input.");
     }
 
     [Fact]
@@ -125,19 +127,17 @@ public class Epic3_ValidationTests
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
         // Verify warning is showing
-        var invalidIndicator = _fixture.FindByAutomationId(window, AutomationIds.InvalidIndicator);
-        Assert.NotNull(invalidIndicator);
-        Assert.False(invalidIndicator.IsOffscreen);
+        var warningSection = _fixture.WaitForElement(window, AutomationIds.ValidationWarningSection);
+        Assert.False(warningSection.IsOffscreen);
 
         // Act — fix the input
         _fixture.TypeText(titleEntry, "good-title");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Assert — valid indicator should now be visible, invalid should be hidden
-        var validIndicator = _fixture.FindByAutomationId(window, AutomationIds.ValidIndicator);
-        Assert.NotNull(validIndicator);
-        Assert.False(validIndicator.IsOffscreen,
-            "Valid indicator should appear after fixing input.");
+        // Assert — the warning disappears; valid input shows no verdict UI
+        var warningAfter = _fixture.FindByAutomationId(window, AutomationIds.ValidationWarningSection);
+        Assert.True(warningAfter is null || warningAfter.IsOffscreen,
+            "Warning should disappear once the input is fixed.");
     }
 
     [Fact]

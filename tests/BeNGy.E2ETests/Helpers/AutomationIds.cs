@@ -11,9 +11,9 @@ public static class AutomationIds
     public const string TitleEntry = "TitleEntry";
     public const string PreviewLabel = "PreviewLabel";
     public const string CopyButton = "CopyButton";
-    public const string ValidIndicator = "ValidIndicator";
-    public const string InvalidIndicator = "InvalidIndicator";
-    public const string ValidationStatusLabel = "ValidationStatusLabel";
+    public const string CloseButton = "CloseButton";
+    // ValidIndicator / InvalidIndicator / ValidationStatusLabel were removed
+    // with the palette redesign: valid input shows no verdict UI at all.
     public const string ValidationMessageLabel = "ValidationMessageLabel";
     public const string ValidationWarningSection = "ValidationWarningSection";
     public const string InvalidCharsRow = "InvalidCharsRow";

@@ -24,7 +24,9 @@ public static class PreferenceKeys
     public const bool AutoCloseAfterCopyDefault = true;
 
     public const string AutoCloseDelayMs = "auto_close_delay_ms";
-    public const int AutoCloseDelayMsDefault = 500;
+    // "Fast" — the palette should get out of the way the moment it has done
+    // its job. (Was 500/"Normal"; user feedback wanted fast by default.)
+    public const int AutoCloseDelayMsDefault = 200;
 
     // ── Hotkey ────────────────────────────────────────────────────
     public const string HotkeyModifiers = "hotkey_modifiers";

@@ -17,6 +17,7 @@
 			<helpers:StringNotEmptyConverter   x:Key="StringNotEmptyConverter" />
 			<helpers:CopySuccessColorConverter x:Key="CopySuccessColorConverter" />
 			<helpers:InvertedBoolConverter     x:Key="InvertedBoolConverter" />
+			<helpers:HotkeyPartsConverter      x:Key="HotkeyPartsConverter" />
 		</ResourceDictionary>
 	</Application.Resources>
 </Application>
