@@ -124,6 +124,16 @@ public class WindowService : IWindowService
 
     public void SetPaletteSize(PaletteSurface surface)
     {
+        // Callers include ViewModel PropertyChanged handlers, which can run off
+        // the UI thread (e.g. UIA-driven value changes). AppWindow tolerates
+        // that; InputNonClientPointerSource does NOT — calling it off-thread
+        // took the whole app down (COM E_UNEXPECTED) mid-E2E-suite.
+        if (!MainThread.IsMainThread)
+        {
+            MainThread.BeginInvokeOnMainThread(() => SetPaletteSize(surface));
+            return;
+        }
+
         if (_appWindow is null) return;
         var height = surface switch
         {
