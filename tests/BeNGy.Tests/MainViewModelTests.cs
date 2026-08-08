@@ -36,15 +36,15 @@ public class MainViewModelTests
     [Fact]
     public void PrefixOptions_ContainsExpectedItems()
     {
-        var expected = new[] { "feature", "bugfix", "hotfix", "release" };
+        var expected = new[] { "feature", "bugfix", "hotfix", "release", "task" };
 
         Assert.Equal(expected, _viewModel.PrefixOptions);
     }
 
     [Fact]
-    public void PrefixOptions_HasExactlyFourItems()
+    public void PrefixOptions_MatchesDefaultCatalog()
     {
-        Assert.Equal(4, _viewModel.PrefixOptions.Count);
+        Assert.Equal(5, _viewModel.PrefixOptions.Count);
     }
 
     // ── Default values ───────────────────────────────────────────

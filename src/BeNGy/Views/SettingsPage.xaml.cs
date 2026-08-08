@@ -7,12 +7,21 @@ namespace BeNGy.Views;
 public partial class SettingsPage : ContentPage
 {
     private readonly SettingsViewModel _viewModel;
+    private readonly IWindowService? _windowService;
 
-    public SettingsPage(SettingsViewModel viewModel)
+    public SettingsPage(SettingsViewModel viewModel, IWindowService? windowService = null)
     {
         InitializeComponent();
         _viewModel = viewModel;
+        _windowService = windowService;
         BindingContext = viewModel;
+    }
+
+    private async void OnCloseClicked(object sender, EventArgs e)
+    {
+        // Hide to tray; pop first so the next summon starts on the main form.
+        await Navigation.PopAsync(animated: false);
+        _windowService?.HideWindow();
     }
 
     protected override void OnAppearing()

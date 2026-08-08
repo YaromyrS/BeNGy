@@ -19,7 +19,6 @@ public static class AutomationIds
     public const string InvalidCharsRow = "InvalidCharsRow";
     public const string InvalidCharsLabel = "InvalidCharsLabel";
     public const string InvalidCharsPrefix = "InvalidCharsPrefix";
-    public const string CopyBlockedLabel = "CopyBlockedLabel";
 
     // ── SettingsPage ────────────────────────────────────────────
     public const string DefaultPrefixPicker = "DefaultPrefixPicker";

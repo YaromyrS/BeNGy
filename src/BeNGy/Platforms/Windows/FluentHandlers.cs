@@ -21,5 +21,31 @@ public static class FluentHandlers
         {
             handler.PlatformView.CornerRadius = new Microsoft.UI.Xaml.CornerRadius(4);
         });
+
+        // Interactive things get a hand cursor, like everywhere else on Windows.
+        Microsoft.Maui.Handlers.ButtonHandler.Mapper.AppendToMapping("Fluent", (handler, _) =>
+        {
+            SetHandCursor(handler.PlatformView);
+        });
+    }
+
+    /// <summary>
+    /// Sets the hand cursor on a WinUI element. UIElement.ProtectedCursor is
+    /// protected; reflection is the accepted workaround until the API is public.
+    /// </summary>
+    public static void SetHandCursor(Microsoft.UI.Xaml.UIElement element)
+    {
+        try
+        {
+            typeof(Microsoft.UI.Xaml.UIElement)
+                .GetProperty("ProtectedCursor",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+                .SetValue(element, Microsoft.UI.Input.InputSystemCursor.Create(
+                    Microsoft.UI.Input.InputSystemCursorShape.Hand));
+        }
+        catch
+        {
+            // Cosmetic only — never let a cursor break the app.
+        }
     }
 }

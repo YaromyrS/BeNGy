@@ -23,10 +23,10 @@
         <ScrollView Padding="20,14,20,20">
             <VerticalStackLayout Spacing="4">
 
-                <!-- Header: back chevron (same handler as Done) + title. The
-                     title area drags the window; the recognizer must not
-                     cover the button or it swallows the click. -->
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Margin="0,0,0,8">
+                <!-- Header: back chevron (same handler as Done) + title + close.
+                     The title area drags the window; the recognizer must not
+                     cover the buttons or it swallows their clicks. -->
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,0,0,8">
                     <Button
                         AutomationId="DoneButton"
                         Style="{StaticResource GlyphButton}"
@@ -39,6 +39,12 @@
                         </Grid.GestureRecognizers>
                         <Label Text="Settings" FontSize="20" FontAttributes="Bold" VerticalOptions="Center" />
                     </Grid>
+                    <Button Grid.Column="2"
+                        AutomationId="SettingsCloseButton"
+                        Style="{StaticResource CloseGlyphButton}"
+                        Text="&#xE8BB;"
+                        Clicked="OnCloseClicked"
+                        SemanticProperties.Description="Close to tray" />
                 </Grid>
 
                 <VerticalStackLayout Spacing="4" IsEnabled="{Binding IsCapturingHotkey, Converter={StaticResource InvertedBoolConverter}}">
@@ -52,6 +58,42 @@
                                     SemanticProperties.Description="Default prefix"
                                     ItemsSource="{Binding AvailablePrefixes}" SelectedItem="{Binding DefaultPrefix}"
                                     VerticalOptions="Center" />
+                            </Grid>
+                            <BoxView Style="{StaticResource SettingsRowSeparator}" />
+                            <!-- User-managed prefix catalog: one row per prefix + an add row -->
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" HeightRequest="40">
+                                <Label Text="&#xE8FD;" FontFamily="Segoe Fluent Icons" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Prefixes" VerticalOptions="Center" />
+                            </Grid>
+                            <VerticalStackLayout BindableLayout.ItemsSource="{Binding AvailablePrefixes}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" HeightRequest="38" Margin="24,0,0,0">
+                                            <Label Grid.Column="1" Text="{Binding .}" Style="{StaticResource MonoText}" FontSize="13" VerticalOptions="Center" />
+                                            <Button Grid.Column="2"
+                                                Style="{StaticResource GlyphButton}"
+                                                FontSize="12"
+                                                Text="&#xE74D;"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SettingsViewModel}}, Path=RemovePrefixCommand}"
+                                                CommandParameter="{Binding .}"
+                                                SemanticProperties.Description="Delete prefix" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" HeightRequest="46" Margin="24,0,0,4">
+                                <Entry Grid.Column="1"
+                                    AutomationId="NewPrefixEntry"
+                                    Placeholder="new-prefix"
+                                    Text="{Binding NewPrefix}"
+                                    ReturnCommand="{Binding AddPrefixCommand}"
+                                    VerticalOptions="Center" />
+                                <Button Grid.Column="2"
+                                    AutomationId="AddPrefixButton"
+                                    Style="{StaticResource GlyphButton}"
+                                    Text="&#xE710;"
+                                    Command="{Binding AddPrefixCommand}"
+                                    SemanticProperties.Description="Add prefix" />
                             </Grid>
                             <BoxView Style="{StaticResource SettingsRowSeparator}" />
                             <Grid ColumnDefinitions="Auto,*,180" ColumnSpacing="10" HeightRequest="52">

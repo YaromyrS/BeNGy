@@ -179,21 +179,9 @@ public class Epic3_ValidationTests
             "Copy button should be disabled when validation fails.");
     }
 
-    [Fact]
-    public void Validation_Invalid_ShowsFixValidationHint() // FR32
-    {
-        // Arrange
-        var window = GetWindow();
-        var titleEntry = _fixture.WaitForElement(window, AutomationIds.TitleEntry);
-
-        // Act — enter invalid input
-        _fixture.TypeText(titleEntry, "bad?title");
-        Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
-
-        // Assert — a copy-blocked or validation hint label should appear
-        var copyBlockedLabel = _fixture.FindByAutomationId(window, AutomationIds.CopyBlockedLabel);
-        Assert.NotNull(copyBlockedLabel);
-        Assert.False(copyBlockedLabel.IsOffscreen,
-            "Copy blocked / fix validation hint should be visible.");
-    }
+    // Validation_Invalid_ShowsFixValidationHint was removed with the
+    // "Fix validation issues above to copy" hint itself (user feedback: the
+    // disabled Copy button plus the warning InfoBar already say it). FR32 is
+    // covered by Validation_Invalid_CopyButtonIsDisabled and
+    // Validation_InvalidCharacter_ShowsWarningInfoBar.
 }

@@ -12,8 +12,14 @@ namespace BeNGy.Platforms.Windows;
 /// </summary>
 public class WindowService : IWindowService
 {
+    private readonly IThemeService? _themeService;
     private Microsoft.UI.Xaml.Window? _nativeWindow;
     private AppWindow? _appWindow;
+
+    public WindowService(IThemeService? themeService = null)
+    {
+        _themeService = themeService;
+    }
 
     private const int PaletteWidth = 560;
 
@@ -22,8 +28,8 @@ public class WindowService : IWindowService
     // control it can show -- an undersized window once left the Copy button
     // laid out past the bottom edge, invisible and unclickable, while UI
     // Automation still Invoked it happily (see LayoutFitTests).
-    private const int MainHeight = 300;
-    private const int MainExpandedHeight = 410;
+    private const int MainHeight = 270;
+    private const int MainExpandedHeight = 340;
     private const int SettingsHeight = 620;
 
     // DWM window corner preference (Win11): 33 = DWMWA_WINDOW_CORNER_PREFERENCE, 2 = DWMWCP_ROUND
@@ -74,10 +80,22 @@ public class WindowService : IWindowService
         // root's RequestedTheme, which does NOT track MAUI's UserAppTheme
         // override. Without this, "app Light on Windows dark" renders light
         // text tokens over a dark backdrop -- unreadable.
+        //
+        // Two subscriptions on purpose: MAUI's RequestedThemeChanged proved
+        // droppable in practice (reproduced: theme switch left the native root
+        // dark while MAUI bindings went light), so the authoritative signal is
+        // IThemeService.ThemeChanged, which fires on every explicit change and
+        // on system auto-switch. The MAUI event stays as belt-and-braces.
         if (Microsoft.Maui.Controls.Application.Current is { } app)
         {
             ApplyNativeTheme(app);
             app.RequestedThemeChanged += (_, _) => ApplyNativeTheme(app);
+        }
+        if (_themeService is not null)
+        {
+            _themeService.ThemeChanged += (_, effective) =>
+                MainThread.BeginInvokeOnMainThread(() => ApplyNativeTheme(effective));
+            ApplyNativeTheme(_themeService.EffectiveTheme);
         }
 
         // Intercept close button: hide instead of close
@@ -86,9 +104,19 @@ public class WindowService : IWindowService
 
     private void ApplyNativeTheme(Microsoft.Maui.Controls.Application app)
     {
+        SetNativeRootTheme(app.RequestedTheme == AppTheme.Dark);
+    }
+
+    private void ApplyNativeTheme(BeNGyTheme effective)
+    {
+        SetNativeRootTheme(effective == BeNGyTheme.Dark);
+    }
+
+    private void SetNativeRootTheme(bool dark)
+    {
         if (_nativeWindow?.Content is Microsoft.UI.Xaml.FrameworkElement root)
         {
-            root.RequestedTheme = app.RequestedTheme == AppTheme.Dark
+            root.RequestedTheme = dark
                 ? Microsoft.UI.Xaml.ElementTheme.Dark
                 : Microsoft.UI.Xaml.ElementTheme.Light;
         }

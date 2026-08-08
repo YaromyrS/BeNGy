@@ -10,6 +10,10 @@ public static class PreferenceKeys
     public const string DefaultPrefix = "default_prefix";
     public const string DefaultPrefixValue = "feature";
 
+    /// <summary>User-managed prefix list, comma-joined (see PrefixCatalog).</summary>
+    public const string BranchPrefixes = "branch_prefixes";
+    public const string BranchPrefixesDefault = "feature,bugfix,hotfix,release,task";
+
     public const string TitleFormat = "title_format";
     public const string TitleFormatDefault = "kebab-case";
 

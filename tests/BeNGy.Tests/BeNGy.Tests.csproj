@@ -51,6 +51,7 @@
     <Compile Include="..\..\src\BeNGy\Models\DelayOption.cs" Link="Shared\DelayOption.cs" />
     <Compile Include="..\..\src\BeNGy\Helpers\HotkeyFormattingHelper.cs" Link="Shared\HotkeyFormattingHelper.cs" />
     <Compile Include="..\..\src\BeNGy\ViewModels\SettingsViewModel.cs" Link="Shared\SettingsViewModel.cs" />
+    <Compile Include="..\..\src\BeNGy\Services\PrefixCatalog.cs" Link="Shared\PrefixCatalog.cs" />
   </ItemGroup>
 
 </Project>

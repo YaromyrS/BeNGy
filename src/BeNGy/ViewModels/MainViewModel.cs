@@ -24,18 +24,15 @@ public partial class MainViewModel : BaseViewModel
         _windowService = windowService;
         _preferences = preferences;
 
+        // User-managed prefix catalog (settings can add/remove entries)
+        PrefixOptions = new ObservableCollection<string>(Services.PrefixCatalog.Load(_preferences));
+
         // Story 6.2: Load default prefix from preferences
         _prefix = _preferences?.Get(PreferenceKeys.DefaultPrefix, PreferenceKeys.DefaultPrefixValue)
                   ?? PreferenceKeys.DefaultPrefixValue;
     }
 
-    public ObservableCollection<string> PrefixOptions { get; } = new()
-    {
-        "feature",
-        "bugfix",
-        "hotfix",
-        "release"
-    };
+    public ObservableCollection<string> PrefixOptions { get; }
 
     // ── Input properties ───────────────────────────────────────────
 

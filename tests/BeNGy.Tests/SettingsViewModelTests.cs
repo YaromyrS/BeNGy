@@ -79,8 +79,51 @@ public class SettingsViewModelTests
     {
         var vm = CreateVm();
 
-        var expected = new[] { "feature", "bugfix", "hotfix", "release" };
+        var expected = new[] { "feature", "bugfix", "hotfix", "release", "task" };
         Assert.Equal(expected, vm.AvailablePrefixes);
+    }
+
+    [Fact]
+    public void AddPrefix_AppendsAndPersists()
+    {
+        var vm = CreateVm();
+        vm.NewPrefix = "spike";
+
+        vm.AddPrefixCommand.Execute(null);
+
+        Assert.Contains("spike", vm.AvailablePrefixes);
+        Assert.Equal(string.Empty, vm.NewPrefix);
+        _preferences.Received().Set(PreferenceKeys.BranchPrefixes,
+            "feature,bugfix,hotfix,release,task,spike");
+    }
+
+    [Fact]
+    public void AddPrefix_IgnoresEmptyAndDuplicates()
+    {
+        var vm = CreateVm();
+
+        vm.NewPrefix = "   ";
+        vm.AddPrefixCommand.Execute(null);
+        vm.NewPrefix = "feature";
+        vm.AddPrefixCommand.Execute(null);
+
+        Assert.Equal(5, vm.AvailablePrefixes.Count);
+        _preferences.DidNotReceive().Set(PreferenceKeys.BranchPrefixes, Arg.Any<string>());
+    }
+
+    [Fact]
+    public void RemovePrefix_RemovesAndPersists_AndReassignsDefault()
+    {
+        var vm = CreateVm();
+        vm.DefaultPrefix = "task";
+        _preferences.ClearReceivedCalls();
+
+        vm.RemovePrefixCommand.Execute("task");
+
+        Assert.DoesNotContain("task", vm.AvailablePrefixes);
+        Assert.Equal("feature", vm.DefaultPrefix);
+        _preferences.Received().Set(PreferenceKeys.BranchPrefixes,
+            "feature,bugfix,hotfix,release");
     }
 
     // ── Story 6.3: Hotkey Display ─────────────────────────────────

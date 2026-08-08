@@ -28,6 +28,7 @@ public partial class SettingsViewModel : BaseViewModel
         _startupService = startupService;
 
         // Load saved values
+        AvailablePrefixes = new ObservableCollection<string>(Services.PrefixCatalog.Load(_preferences));
         _defaultPrefix = _preferences.Get(PreferenceKeys.DefaultPrefix, PreferenceKeys.DefaultPrefixValue);
         _selectedThemeString = _themeService.CurrentTheme.ToString();
         _startWithWindows = _startupService?.IsStartWithWindows ?? false;
@@ -55,12 +56,9 @@ public partial class SettingsViewModel : BaseViewModel
         UpdateDelayLabel();
     }
 
-    // ── Story 6.2: Default Prefix ─────────────────────────────────
+    // ── Story 6.2: Default Prefix + user-managed prefix catalog ───
 
-    public ObservableCollection<string> AvailablePrefixes { get; } = new()
-    {
-        "feature", "bugfix", "hotfix", "release"
-    };
+    public ObservableCollection<string> AvailablePrefixes { get; }
 
     [ObservableProperty]
     private string _defaultPrefix;
@@ -68,6 +66,41 @@ public partial class SettingsViewModel : BaseViewModel
     partial void OnDefaultPrefixChanged(string value)
     {
         _preferences.Set(PreferenceKeys.DefaultPrefix, value);
+    }
+
+    [ObservableProperty]
+    private string _newPrefix = string.Empty;
+
+    /// <summary>
+    /// Adds the typed prefix to the catalog. Rejects empties and duplicates;
+    /// git-rule validation happens naturally in the branch preview.
+    /// </summary>
+    [RelayCommand]
+    private void AddPrefix()
+    {
+        var candidate = NewPrefix.Trim();
+        if (candidate.Length == 0 || AvailablePrefixes.Contains(candidate))
+            return;
+
+        AvailablePrefixes.Add(candidate);
+        Services.PrefixCatalog.Save(_preferences, AvailablePrefixes);
+        NewPrefix = string.Empty;
+    }
+
+    /// <summary>
+    /// Removes a prefix from the catalog. The last remaining prefix cannot be
+    /// removed; removing the current default reassigns it to the first entry.
+    /// </summary>
+    [RelayCommand]
+    private void RemovePrefix(string prefix)
+    {
+        if (AvailablePrefixes.Count <= 1) return;
+        if (!AvailablePrefixes.Remove(prefix)) return;
+
+        Services.PrefixCatalog.Save(_preferences, AvailablePrefixes);
+
+        if (DefaultPrefix == prefix)
+            DefaultPrefix = AvailablePrefixes[0];
     }
 
     // ── Story 6.3: Hotkey Configuration ───────────────────────────

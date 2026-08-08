@@ -413,6 +413,36 @@
 		</Setter>
 	</Style>
 
+	<!-- Caption-style close: red fill on hover, white glyph — the Windows
+	     titlebar convention (and PowerToys'). -->
+	<Style x:Key="CloseGlyphButton" TargetType="Button" BasedOn="{StaticResource GlyphButton}">
+		<Setter Property="FontSize" Value="11" />
+		<Setter Property="VisualStateManager.VisualStateGroups">
+			<VisualStateGroupList>
+				<VisualStateGroup x:Name="CommonStates">
+					<VisualState x:Name="Normal">
+						<VisualState.Setters>
+							<Setter Property="BackgroundColor" Value="Transparent" />
+							<Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource TextPrimary}, Dark={StaticResource TextPrimaryDark}}" />
+						</VisualState.Setters>
+					</VisualState>
+					<VisualState x:Name="PointerOver">
+						<VisualState.Setters>
+							<Setter Property="BackgroundColor" Value="#C42B1C" />
+							<Setter Property="TextColor" Value="#FFFFFF" />
+						</VisualState.Setters>
+					</VisualState>
+					<VisualState x:Name="Pressed">
+						<VisualState.Setters>
+							<Setter Property="BackgroundColor" Value="#B3271D" />
+							<Setter Property="TextColor" Value="#FFFFFF" />
+						</VisualState.Setters>
+					</VisualState>
+				</VisualStateGroup>
+			</VisualStateGroupList>
+		</Setter>
+	</Style>
+
 	<Style x:Key="PreviewCard" TargetType="Border">
 		<Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource CardBackground}, Dark={StaticResource CardBackgroundDark}}" />
 		<Setter Property="StrokeShape" Value="RoundRectangle 8" />

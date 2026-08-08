@@ -30,8 +30,7 @@
 					SemanticProperties.Description="Settings" />
 				<Button Grid.Column="2"
 					AutomationId="CloseButton"
-					Style="{StaticResource GlyphButton}"
-					FontSize="13"
+					Style="{StaticResource CloseGlyphButton}"
 					Text="&#xE8BB;"
 					Command="{Binding DismissCommand}"
 					SemanticProperties.Description="Close to tray" />
@@ -131,11 +130,6 @@
 								Text="{Binding InvalidCharactersDisplay}"
 								VerticalOptions="Center" />
 						</HorizontalStackLayout>
-						<Label
-							AutomationId="CopyBlockedLabel"
-							Style="{StaticResource Caption}"
-							TextColor="{AppThemeBinding Light={StaticResource WarningText}, Dark={StaticResource WarningTextDark}}"
-							Text="Fix validation issues above to copy" />
 					</VerticalStackLayout>
 				</Grid>
 			</Border>

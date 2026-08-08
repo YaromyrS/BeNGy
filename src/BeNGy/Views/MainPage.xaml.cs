@@ -66,6 +66,12 @@ public partial class MainPage : ContentPage
 		// Returning from Settings (or first show): pick the right compact surface.
 		UpdateSurface();
 
+#if WINDOWS
+		// The preview is tap-to-copy — advertise it with a hand cursor.
+		if (PreviewLabel.Handler?.PlatformView is Microsoft.UI.Xaml.UIElement previewNative)
+			Platforms.Windows.FluentHandlers.SetHandCursor(previewNative);
+#endif
+
 		// Auto-focus ticket field when window appears (NFR12)
 		Dispatcher.Dispatch(() =>
 		{

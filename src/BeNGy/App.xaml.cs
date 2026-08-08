@@ -197,7 +197,7 @@ public partial class App : Application
 				// Push without animation (a palette snaps, it doesn't slide) and
 				// grow AFTER the content exists — growing first exposed an
 				// unrendered region that flashed black.
-				await _mainWindow.Page.Navigation.PushAsync(new SettingsPage(settingsVm), animated: false);
+				await _mainWindow.Page.Navigation.PushAsync(new SettingsPage(settingsVm, _windowService), animated: false);
 				_windowService?.SetPaletteSize(PaletteSurface.Settings);
 				_windowService?.ShowWindow();
 			}
