@@ -10,7 +10,7 @@
 			 NavigationPage.HasNavigationBar="False">
 
 	<ScrollView>
-		<VerticalStackLayout Spacing="12" Padding="20,14,20,20">
+		<VerticalStackLayout Spacing="12" Padding="20,14,20,14">
 
 			<!-- Header: wordmark + empty stretch is the drag region. The
 			     recognizer must NOT cover the buttons: starting the native

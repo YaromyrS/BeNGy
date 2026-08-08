@@ -1,4 +1,4 @@
-using BeNGy.Helpers;
+﻿using BeNGy.Helpers;
 using BeNGy.Models;
 using BeNGy.Services.Interfaces;
 
@@ -70,6 +70,17 @@ public partial class SettingsViewModel : BaseViewModel
 
     [ObservableProperty]
     private string _newPrefix = string.Empty;
+
+    /// <summary>Prefix manager is collapsed by default; a chevron row expands it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PrefixChevron))]
+    private bool _isPrefixListExpanded;
+
+    /// <summary>Chevron glyph for the prefixes row: down = collapsed, up = expanded.</summary>
+    public string PrefixChevron => IsPrefixListExpanded ? "" : "";
+
+    [RelayCommand]
+    private void TogglePrefixList() => IsPrefixListExpanded = !IsPrefixListExpanded;
 
     /// <summary>
     /// Adds the typed prefix to the catalog. Rejects empties and duplicates;

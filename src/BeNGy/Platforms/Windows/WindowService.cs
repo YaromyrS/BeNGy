@@ -28,8 +28,8 @@ public class WindowService : IWindowService
     // control it can show -- an undersized window once left the Copy button
     // laid out past the bottom edge, invisible and unclickable, while UI
     // Automation still Invoked it happily (see LayoutFitTests).
-    private const int MainHeight = 270;
-    private const int MainExpandedHeight = 340;
+    private const int MainHeight = 262;
+    private const int MainExpandedHeight = 332;
     private const int SettingsHeight = 620;
 
     // DWM window corner preference (Win11): 33 = DWMWA_WINDOW_CORNER_PREFERENCE, 2 = DWMWCP_ROUND

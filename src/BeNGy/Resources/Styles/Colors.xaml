@@ -71,6 +71,15 @@
 	<Color x:Key="KeycapFill">#F3F4F6</Color>
 	<Color x:Key="KeycapFillDark">#374151</Color>
 
+	<!-- Subtle hover/pressed fills for quiet (glyph) buttons -->
+	<Color x:Key="SubtleHover">#0F000000</Color>
+	<Color x:Key="SubtleHoverDark">#15FFFFFF</Color>
+	<Color x:Key="SubtlePressed">#1A000000</Color>
+	<Color x:Key="SubtlePressedDark">#24FFFFFF</Color>
+	<!-- Denser hover for card-filled neutral buttons -->
+	<Color x:Key="NeutralHover">#E3E9EF</Color>
+	<Color x:Key="NeutralHoverDark">#26FFFFFF</Color>
+
 	<!-- Used when the composition backdrop is unavailable -->
 	<Color x:Key="PageFallback">#F3F3F3</Color>
 	<Color x:Key="PageFallbackDark">#202020</Color>
