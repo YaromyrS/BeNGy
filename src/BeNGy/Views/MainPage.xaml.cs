@@ -37,19 +37,6 @@ public partial class MainPage : ContentPage
 		(Application.Current as App)?.OpenSettings();
 	}
 
-	private void OnHeaderPointerPressed(object sender, PointerEventArgs e)
-	{
-#if WINDOWS
-		// Chromeless window: hand the drag to Windows' native move loop.
-		if (Window?.Handler?.PlatformView is Microsoft.UI.Xaml.Window native)
-		{
-			var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(native);
-			Helpers.NativeMethods.ReleaseCapture();
-			Helpers.NativeMethods.SendMessage(hwnd, Helpers.NativeMethods.WM_NCLBUTTONDOWN, Helpers.NativeMethods.HTCAPTION, IntPtr.Zero);
-		}
-#endif
-	}
-
 	protected override void OnAppearing()
 	{
 		base.OnAppearing();
@@ -63,7 +50,9 @@ public partial class MainPage : ContentPage
 			this.TranslateTo(0, 0, 120, Easing.CubicOut),
 			this.ScaleTo(1, 120, Easing.CubicOut));
 
-		// Returning from Settings (or first show): pick the right compact surface.
+		// Returning from Settings (or first show): re-apply anything settings
+		// changed (separators, formats, prefix catalog), then pick the surface.
+		_viewModel.RefreshFromPreferences();
 		UpdateSurface();
 
 #if WINDOWS

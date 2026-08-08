@@ -47,6 +47,29 @@ public class MainViewModelTests
         Assert.Equal(5, _viewModel.PrefixOptions.Count);
     }
 
+    [Fact]
+    public void RefreshFromPreferences_RegeneratesPreviewWithNewSeparator()
+    {
+        // Simulates: user types, opens settings, changes a separator, returns.
+        var prefs = NSubstitute.Substitute.For<BeNGy.Services.Interfaces.IPreferencesService>();
+        prefs.Get(Arg.Any<string>(), Arg.Any<string>()).Returns(ci => ci.ArgAt<string>(1));
+        prefs.Get(Arg.Any<string>(), Arg.Any<int>()).Returns(ci => ci.ArgAt<int>(1));
+        prefs.Get(Arg.Any<string>(), Arg.Any<bool>()).Returns(ci => ci.ArgAt<bool>(1));
+        var vm = new MainViewModel(_generator, _validator, _clipboard, _windowService, prefs);
+
+        vm.TicketNumber = "EXP-1";
+        vm.Title = "do thing";
+        var before = vm.GeneratedBranchName;
+        Assert.Contains("/", before);   // default prefix/ticket separator
+
+        // Settings changed the separator; nothing typed afterwards.
+        prefs.Get(BeNGy.Models.PreferenceKeys.PrefixTicketSeparator, Arg.Any<string>()).Returns(".");
+        vm.RefreshFromPreferences();
+
+        Assert.Contains(".", vm.GeneratedBranchName);
+        Assert.NotEqual(before, vm.GeneratedBranchName);
+    }
+
     // ── Default values ───────────────────────────────────────────
 
     [Fact]

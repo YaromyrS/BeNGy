@@ -55,17 +55,16 @@ public class Epic4_ClipboardTests
     }
 
     [Fact]
-    public void CopyButton_Default_ShowsCopyText() // FR14
+    public void CopyButton_Default_IsPresentAndAnnouncesCopy() // FR14
     {
-        // Arrange
+        // The copy action is now a glyph button inside the preview card; its
+        // UIA name comes from SemanticProperties ("Copy branch name to
+        // clipboard"), not from visible text.
         var window = LaunchAndGetWindow();
 
-        // Act
         var copyButton = _fixture.WaitForElement(window, AutomationIds.CopyButton);
 
-        // Assert
-        var buttonText = copyButton.AsButton().Name;
-        Assert.Contains("Copy", buttonText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Copy", copyButton.AsButton().Name, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

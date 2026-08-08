@@ -27,6 +27,17 @@ public static class FluentHandlers
         {
             SetHandCursor(handler.PlatformView);
         });
+
+        // WinUI ToggleSwitch renders an "On"/"Off" text label beside the
+        // toggle; the palette's settings rows say what the switch does, so the
+        // label is noise and ruins right-alignment.
+        Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping("Fluent", (handler, _) =>
+        {
+            handler.PlatformView.OnContent = null;
+            handler.PlatformView.OffContent = null;
+            handler.PlatformView.MinWidth = 0;
+            SetHandCursor(handler.PlatformView);
+        });
     }
 
     /// <summary>

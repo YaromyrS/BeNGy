@@ -12,16 +12,10 @@
 	<ScrollView>
 		<VerticalStackLayout Spacing="12" Padding="20,14,20,14">
 
-			<!-- Header: wordmark + empty stretch is the drag region. The
-			     recognizer must NOT cover the buttons: starting the native
-			     move loop on pointer-down would swallow their clicks. -->
+			<!-- Header. Dragging is a native caption region declared by
+			     WindowService (InputNonClientPointerSource) — no gestures. -->
 			<Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
-				<Grid BackgroundColor="Transparent">
-					<Grid.GestureRecognizers>
-						<PointerGestureRecognizer PointerPressed="OnHeaderPointerPressed" />
-					</Grid.GestureRecognizers>
-					<Label Text="BeNGy" Style="{StaticResource PaletteTitle}" VerticalOptions="Center" />
-				</Grid>
+				<Label Text="BeNGy" Style="{StaticResource PaletteTitle}" VerticalOptions="Center" />
 				<Button Grid.Column="1"
 					AutomationId="SettingsButton"
 					Style="{StaticResource GlyphButton}"
@@ -64,32 +58,48 @@
 				ReturnType="Done"
 				ReturnCommand="{Binding CopyCommand}" />
 
-			<!-- Preview card -->
-			<Border Style="{StaticResource PreviewCard}">
-				<Label
-					x:Name="PreviewLabel"
-					AutomationId="PreviewLabel"
-					SemanticProperties.Description="Generated branch name preview"
-					Style="{StaticResource MonoText}"
-					Text="{Binding GeneratedBranchName}"
-					TextColor="{AppThemeBinding Light={StaticResource TextPrimary}, Dark={StaticResource TextPrimaryDark}}"
-					LineBreakMode="TailTruncation">
-					<Label.GestureRecognizers>
-						<TapGestureRecognizer Command="{Binding CopyCommand}" />
-					</Label.GestureRecognizers>
-				</Label>
+			<!-- Preview card: branch name | copy icon. The whole card copies. -->
+			<Border Style="{StaticResource PreviewCard}" Padding="12,4" HeightRequest="44">
+				<Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+					<Label
+						x:Name="PreviewLabel"
+						AutomationId="PreviewLabel"
+						SemanticProperties.Description="Generated branch name preview"
+						Style="{StaticResource MonoText}"
+						Text="{Binding GeneratedBranchName}"
+						TextColor="{AppThemeBinding Light={StaticResource TextPrimary}, Dark={StaticResource TextPrimaryDark}}"
+						LineBreakMode="TailTruncation"
+						VerticalOptions="Center">
+						<Label.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding CopyCommand}" />
+						</Label.GestureRecognizers>
+					</Label>
+					<BoxView Grid.Column="1"
+						WidthRequest="1"
+						HeightRequest="22"
+						VerticalOptions="Center"
+						Color="{AppThemeBinding Light={StaticResource CardStroke}, Dark={StaticResource CardStrokeDark}}" />
+					<Button Grid.Column="2"
+						x:Name="CopyButton"
+						AutomationId="CopyButton"
+						SemanticProperties.Description="Copy branch name to clipboard"
+						Style="{StaticResource GlyphButton}"
+						WidthRequest="32"
+						HeightRequest="32"
+						FontSize="14"
+						Text="&#xE8C8;"
+						Command="{Binding CopyCommand}"
+						VerticalOptions="Center">
+						<Button.Triggers>
+							<!-- Brief checkmark feedback after a successful copy -->
+							<DataTrigger TargetType="Button" Binding="{Binding CopySuccess}" Value="True">
+								<Setter Property="Text" Value="&#xE73E;" />
+								<Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource SuccessText}, Dark={StaticResource SuccessTextDark}}" />
+							</DataTrigger>
+						</Button.Triggers>
+					</Button>
+				</Grid>
 			</Border>
-
-			<!-- Primary action only. A valid form shows no verdict at all:
-			     validity is the default state; only problems get pixels. -->
-			<Button
-				x:Name="CopyButton"
-				AutomationId="CopyButton"
-				SemanticProperties.Description="Copy branch name to clipboard"
-				Style="{StaticResource AccentButton}"
-				Text="{Binding CopyButtonText}"
-				Command="{Binding CopyCommand}"
-				HorizontalOptions="End" />
 
 			<!-- One amber InfoBar replaces the loose warning labels; every
 			     AutomationId inside survives for the E2E assertions. -->

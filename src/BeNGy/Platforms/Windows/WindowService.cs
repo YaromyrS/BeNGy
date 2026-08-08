@@ -28,8 +28,8 @@ public class WindowService : IWindowService
     // control it can show -- an undersized window once left the Copy button
     // laid out past the bottom edge, invisible and unclickable, while UI
     // Automation still Invoked it happily (see LayoutFitTests).
-    private const int MainHeight = 262;
-    private const int MainExpandedHeight = 332;
+    private const int MainHeight = 216;
+    private const int MainExpandedHeight = 284;
     private const int SettingsHeight = 620;
 
     // DWM window corner preference (Win11): 33 = DWMWA_WINDOW_CORNER_PREFERENCE, 2 = DWMWCP_ROUND
@@ -135,6 +135,29 @@ public class WindowService : IWindowService
         // is theirs. Growth is anchored top-left (downward), which reads
         // naturally for the InfoBar and the settings page alike.
         _appWindow.Resize(new SizeInt32(PaletteWidth, height));
+        SetCaptionRegion(surface);
+    }
+
+    /// <summary>
+    /// Declares the header strip as a native caption region so Windows itself
+    /// runs the drag. The previous approach (WM_NCLBUTTONDOWN from a MAUI
+    /// pointer event) fought WinUI's pointer capture: the move loop only
+    /// engaged after the mouse was released.
+    /// The buttons' area is excluded so their clicks are untouched.
+    /// </summary>
+    private void SetCaptionRegion(PaletteSurface surface)
+    {
+        if (_appWindow is null) return;
+
+        var src = Microsoft.UI.Input.InputNonClientPointerSource.GetForWindowId(_appWindow.Id);
+
+        // Header strip is y 0..56. Main: gear+close occupy the right ~100px.
+        // Settings: back button occupies the left ~60px, close the right ~60px.
+        var region = surface == PaletteSurface.Settings
+            ? new RectInt32(60, 0, PaletteWidth - 60 - 60, 56)
+            : new RectInt32(0, 0, PaletteWidth - 100, 56);
+
+        src.SetRegionRects(Microsoft.UI.Input.NonClientRegionKind.Caption, new[] { region });
     }
 
     /// <summary>PowerToys Run position: centered horizontally, top at 25% of the work area.</summary>

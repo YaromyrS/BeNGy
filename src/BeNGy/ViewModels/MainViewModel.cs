@@ -34,6 +34,31 @@ public partial class MainViewModel : BaseViewModel
 
     public ObservableCollection<string> PrefixOptions { get; }
 
+    /// <summary>
+    /// Re-reads everything settings can change — the prefix catalog and the
+    /// formatting preferences — and regenerates the preview. Called when the
+    /// main page reappears so a settings change is visible immediately, not
+    /// only after the next keystroke.
+    /// </summary>
+    public void RefreshFromPreferences()
+    {
+        var catalog = Services.PrefixCatalog.Load(_preferences);
+        var selected = Prefix;
+
+        PrefixOptions.Clear();
+        foreach (var p in catalog)
+            PrefixOptions.Add(p);
+
+        // Keep the user's selection when it still exists; otherwise fall back
+        // to the (possibly reassigned) default.
+        Prefix = PrefixOptions.Contains(selected)
+            ? selected
+            : _preferences?.Get(PreferenceKeys.DefaultPrefix, PreferenceKeys.DefaultPrefixValue)
+              ?? PreferenceKeys.DefaultPrefixValue;
+
+        RefreshBranchName();
+    }
+
     // ── Input properties ───────────────────────────────────────────
 
     [ObservableProperty]
