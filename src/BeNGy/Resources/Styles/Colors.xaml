@@ -79,6 +79,8 @@
 	<!-- Denser hover for card-filled neutral buttons -->
 	<Color x:Key="NeutralHover">#E3E9EF</Color>
 	<Color x:Key="NeutralHoverDark">#26FFFFFF</Color>
+	<Color x:Key="NeutralPressed">#D0D9E2</Color>
+	<Color x:Key="NeutralPressedDark">#38FFFFFF</Color>
 
 	<!-- Used when the composition backdrop is unavailable -->
 	<Color x:Key="PageFallback">#F3F3F3</Color>
