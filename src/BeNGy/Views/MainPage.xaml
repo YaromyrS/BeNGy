@@ -12,8 +12,8 @@
 	<ScrollView>
 		<VerticalStackLayout Spacing="12" Padding="20,14,20,14">
 
-			<!-- Header. Dragging is a native caption region declared by
-			     WindowService (InputNonClientPointerSource) — no gestures. -->
+			<!-- Header. Dragging is handled natively by WindowService (pointer
+			     messages on the WinUI bridge window) — no gestures here. -->
 			<Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
 				<Label Text="BeNGy" Style="{StaticResource PaletteTitle}" VerticalOptions="Center" />
 				<Button Grid.Column="1"
@@ -83,7 +83,7 @@
 						x:Name="CopyButton"
 						AutomationId="CopyButton"
 						SemanticProperties.Description="Copy branch name to clipboard"
-						Style="{StaticResource GlyphButton}"
+						Style="{StaticResource CardGlyphButton}"
 						WidthRequest="32"
 						HeightRequest="32"
 						FontSize="14"

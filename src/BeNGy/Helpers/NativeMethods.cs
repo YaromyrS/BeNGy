@@ -20,19 +20,66 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool SetForegroundWindow(IntPtr hWnd);
 
-    // ── Borderless window dragging ────────────────────────────────
-    // A chromeless palette has no title bar; sending WM_NCLBUTTONDOWN with
-    // HTCAPTION makes Windows run its native move loop as if one existed.
+    // ── Borderless window dragging (WM_NCHITTEST subclass) ────────
+    // A chromeless palette has no title bar; answering WM_NCHITTEST with
+    // HTCAPTION for the header strip makes Windows treat it as a native
+    // caption: drag works from the first pixel of movement, with no extra
+    // input-sink windows polluting the UI Automation tree.
 
+    internal const uint WM_NCHITTEST = 0x0084;
     internal const uint WM_NCLBUTTONDOWN = 0x00A1;
+    internal const uint WM_NCLBUTTONUP = 0x00A2;
+    internal const uint WM_SYSCOMMAND = 0x0112;
+    internal const uint WM_MOUSEMOVE = 0x0200;
+    internal const uint WM_LBUTTONDOWN = 0x0201;
+    internal const uint WM_LBUTTONUP = 0x0202;
+    internal const uint WM_CAPTURECHANGED = 0x0215;
+    internal const uint WM_ENTERSIZEMOVE = 0x0231;
+    internal const uint WM_EXITSIZEMOVE = 0x0232;
+    internal const uint WM_NCPOINTERDOWN = 0x0242;
+    internal const uint WM_NCPOINTERUP = 0x0243;
+    internal const uint WM_POINTERUPDATE = 0x0245;
+    internal const uint WM_POINTERDOWN = 0x0246;
+    internal const uint WM_POINTERUP = 0x0247;
+    internal const uint WM_POINTERENTER = 0x0249;
+    internal const uint WM_POINTERLEAVE = 0x024A;
+    internal const uint WM_POINTERCAPTURECHANGED = 0x024C;
+    internal static readonly IntPtr HTCLIENT = new(1);
     internal static readonly IntPtr HTCAPTION = new(2);
+    internal static readonly IntPtr HTTRANSPARENT = new(-1);
+
+    internal const uint SWP_NOSIZE = 0x0001;
+    internal const uint SWP_NOZORDER = 0x0004;
+    internal const uint SWP_NOACTIVATE = 0x0010;
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    internal static extern bool ReleaseCapture();
+    internal static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
 
     [DllImport("user32.dll")]
-    internal static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool IsWindow(IntPtr hWnd);
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct POINT { public int X; public int Y; }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool ScreenToClient(IntPtr hWnd, ref POINT point);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool ClientToScreen(IntPtr hWnd, ref POINT point);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    internal static extern IntPtr FindWindowEx(IntPtr hWndParent, IntPtr hWndChildAfter, string? lpszClass, string? lpszWindow);
 
     // ── Global hotkey (Epic 5) ────────────────────────────────────
 

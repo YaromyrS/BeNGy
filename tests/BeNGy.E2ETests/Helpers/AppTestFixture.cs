@@ -22,6 +22,20 @@ public class AppTestFixture : IDisposable
 
     public string ExePath { get; }
 
+    static AppTestFixture()
+    {
+        // Match the app's DPI awareness so GetWindowRect and message
+        // coordinates are physical pixels on scaled displays (the sandbox
+        // guest may not run at 100%). Without this, coordinate feedback in
+        // the drag tests is DPI-virtualized and the drag path skews. May
+        // fail if the test host already committed an awareness -- fine,
+        // the assertions tolerate residual scaling.
+        _ = SetProcessDpiAwarenessContext(new IntPtr(-4));   // PER_MONITOR_AWARE_V2
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+
     public AppTestFixture()
     {
         var envPath = Environment.GetEnvironmentVariable("BENGY_EXE_PATH");

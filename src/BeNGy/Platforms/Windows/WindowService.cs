@@ -75,6 +75,7 @@ public class WindowService : IWindowService
 
         SetPaletteSize(PaletteSurface.Main);
         PositionPalette();   // initial placement only; afterwards position belongs to the user
+        SubclassForDrag(hwnd);
 
         // The acrylic/mica tint and WinUI control themes key off the native
         // root's RequestedTheme, which does NOT track MAUI's UserAppTheme
@@ -145,29 +146,258 @@ public class WindowService : IWindowService
         // is theirs. Growth is anchored top-left (downward), which reads
         // naturally for the InfoBar and the settings page alike.
         _appWindow.Resize(new SizeInt32(PaletteWidth, height));
-        SetCaptionRegion(surface);
+
+        // Drag zone exclusions differ per surface: main has gear+close on the
+        // right; settings has back on the left and close on the right.
+        (_dragLeftExclusion, _dragRightExclusion) = surface == PaletteSurface.Settings
+            ? (60, 60)
+            : (0, 100);
     }
 
-    /// <summary>
-    /// Declares the header strip as a native caption region so Windows itself
-    /// runs the drag. The previous approach (WM_NCLBUTTONDOWN from a MAUI
-    /// pointer event) fought WinUI's pointer capture: the move loop only
-    /// engaged after the mouse was released.
-    /// The buttons' area is excluded so their clicks are untouched.
-    /// </summary>
-    private void SetCaptionRegion(PaletteSurface surface)
+    // ── Header dragging ────────────────────────────────────────────
+    // The drag lives in a subclass of the WinUI content-island bridge window
+    // (Microsoft.UI.Content.DesktopChildSiteBridge), because that is where
+    // mouse input actually arrives: WinUI 3 delivers it as client-area
+    // WM_POINTER* messages to the bridge, bypassing the legacy non-client
+    // pipeline entirely. See BridgeWndProc for the manual move loop.
+    // Rejected alternatives, in order: WM_NCLBUTTONDOWN from a MAUI gesture
+    // fought WinUI pointer capture (drag only started after mouse release);
+    // InputNonClientPointerSource caption regions inject a "Non Client Input
+    // Sink Window" into the UIA tree that broke element lookups in the E2E
+    // sandbox; WM_NCHITTEST/HTCAPTION subclassing was worse than useless --
+    // the pointer pipeline consults the hit test when ROUTING input, so a
+    // non-HTCLIENT answer over the header made presses there vanish (routed
+    // toward native caption handling the island doesn't have) while never
+    // producing the legacy WM_NCLBUTTONDOWN/WM_SYSCOMMAND that would have made
+    // DefWindowProc drag the window. Message-trace proof: with the overrides
+    // active, only presses OUTSIDE the drag zone arrived at the bridge.
+
+    private const int CaptionHeight = 56;
+    private int _dragLeftExclusion;
+    private int _dragRightExclusion = 100;
+    private IntPtr _hwnd;
+    private NativeMethods.WndProcDelegate? _wndProc;         // fields: keep the
+    private NativeMethods.WndProcDelegate? _bridgeWndProc;   // delegates alive for GC
+    private IntPtr _oldWndProc;
+    private IntPtr _oldBridgeWndProc;
+    private IntPtr _bridgeHwnd;
+
+    private void SubclassForDrag(IntPtr hwnd)
     {
-        if (_appWindow is null) return;
+        _hwnd = hwnd;
+        _wndProc = DragWndProc;
+        _oldWndProc = NativeMethods.SetWindowLongPtr(
+            hwnd,
+            NativeMethods.GWLP_WNDPROC,
+            System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(_wndProc));
+        TrySubclassBridge();
+    }
 
-        var src = Microsoft.UI.Input.InputNonClientPointerSource.GetForWindowId(_appWindow.Id);
+    // The bridge child is created when the XAML content island attaches, which
+    // can be after Initialize (we run on MAUI's Window.Created). Callable
+    // repeatedly; binds once. ShowWindow retries it as a fallback.
+    private void TrySubclassBridge()
+    {
+        // Re-bind if WinUI ever destroys and recreates the bridge (a recreated
+        // bridge would silently revert to an un-subclassed, drag-less window).
+        if (_bridgeHwnd != IntPtr.Zero && !NativeMethods.IsWindow(_bridgeHwnd))
+        {
+            _bridgeHwnd = IntPtr.Zero;
+        }
+        if (_bridgeHwnd != IntPtr.Zero || _hwnd == IntPtr.Zero) return;
 
-        // Header strip is y 0..56. Main: gear+close occupy the right ~100px.
-        // Settings: back button occupies the left ~60px, close the right ~60px.
-        var region = surface == PaletteSurface.Settings
-            ? new RectInt32(60, 0, PaletteWidth - 60 - 60, 56)
-            : new RectInt32(0, 0, PaletteWidth - 100, 56);
+        var bridge = NativeMethods.FindWindowEx(
+            _hwnd, IntPtr.Zero, "Microsoft.UI.Content.DesktopChildSiteBridge", null);
+        if (bridge == IntPtr.Zero)
+        {
+            DragLog("INIT", "bridge NOT found");
+            return;
+        }
 
-        src.SetRegionRects(Microsoft.UI.Input.NonClientRegionKind.Caption, new[] { region });
+        _bridgeHwnd = bridge;
+        _bridgeWndProc = BridgeWndProc;
+        _oldBridgeWndProc = NativeMethods.SetWindowLongPtr(
+            bridge,
+            NativeMethods.GWLP_WNDPROC,
+            System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(_bridgeWndProc));
+        DragLog("INIT", $"bridge bound 0x{bridge.ToInt64():X}, oldProc=0x{_oldBridgeWndProc.ToInt64():X}");
+    }
+
+    // Diagnostic tap only. Deliberately NO WM_NCHITTEST override here: the
+    // pointer pipeline consults hit-testing when routing input, and any answer
+    // other than HTCLIENT over the header made it route the press away from
+    // the bridge (toward native caption handling that does not exist for a
+    // WinUI island), so the press simply vanished. Message-trace proof: with
+    // the overrides active, only presses OUTSIDE the drag zone ever arrived
+    // as WM_POINTERDOWN on the bridge.
+    private IntPtr DragWndProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam)
+    {
+        DragLog("TOP", msg, wParam);
+
+        return NativeMethods.CallWindowProc(_oldWndProc, hwnd, msg, wParam, lParam);
+    }
+
+    // Manual move loop on the bridge window: record the window origin on a
+    // press in the drag zone, follow the cursor delta with SetWindowPos on
+    // every move, stop on release. Drag messages are swallowed while a drag is
+    // active; the drag zone holds nothing interactive.
+    //
+    // TWO input dialects on purpose. Real mice reach a WinUI island as
+    // client-area WM_POINTER* messages (message trace: a real press arrives as
+    // WM_POINTERDOWN on the bridge; no WM_NCLBUTTONDOWN / WM_NCPOINTERDOWN /
+    // WM_SYSCOMMAND is ever generated, so DefWindowProc's native caption drag
+    // is unreachable). Legacy WM_LBUTTONDOWN/WM_MOUSEMOVE/WM_LBUTTONUP cover
+    // input paths that bypass mouse-in-pointer promotion -- and they are what
+    // the E2E suite posts: fabricated WM_POINTER* messages are DISCARDED by
+    // the message pump before reaching any wndproc (the pointer input stack
+    // validates them against its live pointer table), while plain mouse
+    // messages are deliverable via PostMessage. A drag is owned by the family
+    // that armed it, so the paths cannot interfere. Pointer lParams carry
+    // screen coords; legacy lParams carry client coords, converted before the
+    // shared zone/delta math (all screen-space).
+    private enum DragSource { None, Pointer, Legacy }
+
+    private DragSource _dragSource;
+    private int _dragStartCursorX;
+    private int _dragStartCursorY;
+    private NativeMethods.RECT _dragStartRect;
+
+    private IntPtr BridgeWndProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam)
+    {
+        DragLog("BRIDGE", msg, wParam);
+
+        switch (msg)
+        {
+            case NativeMethods.WM_POINTERDOWN
+                when _dragSource == DragSource.None && TryStartDrag(UnpackPoint(lParam), DragSource.Pointer):
+                return IntPtr.Zero;
+
+            case NativeMethods.WM_POINTERUPDATE when _dragSource == DragSource.Pointer:
+                MoveWindowWithCursor(UnpackPoint(lParam));
+                return IntPtr.Zero;
+
+            case NativeMethods.WM_POINTERUP when _dragSource == DragSource.Pointer:
+                EndDrag();
+                return IntPtr.Zero;
+
+            case NativeMethods.WM_LBUTTONDOWN
+                when _dragSource == DragSource.None && TryStartDrag(ClientToScreen(hwnd, UnpackPoint(lParam)), DragSource.Legacy):
+                return IntPtr.Zero;
+
+            case NativeMethods.WM_MOUSEMOVE when _dragSource == DragSource.Legacy:
+                MoveWindowWithCursor(ClientToScreen(hwnd, UnpackPoint(lParam)));
+                return IntPtr.Zero;
+
+            case NativeMethods.WM_LBUTTONUP when _dragSource == DragSource.Legacy:
+                EndDrag();
+                return IntPtr.Zero;
+
+            case NativeMethods.WM_POINTERCAPTURECHANGED when _dragSource != DragSource.None:
+                _dragSource = DragSource.None;   // capture stolen: cancel, but let others see the message
+                break;
+        }
+
+        return NativeMethods.CallWindowProc(_oldBridgeWndProc, hwnd, msg, wParam, lParam);
+    }
+
+    private bool TryStartDrag((int X, int Y) screenPoint, DragSource source)
+    {
+        if (!IsInDragZone(screenPoint)) return false;
+
+        _dragSource = source;
+        (_dragStartCursorX, _dragStartCursorY) = screenPoint;
+        NativeMethods.GetWindowRect(_hwnd, out _dragStartRect);
+        DragLog("BRIDGE", $"drag start ({source})");
+        return true;
+    }
+
+    private void MoveWindowWithCursor((int X, int Y) screenPoint)
+    {
+        NativeMethods.SetWindowPos(
+            _hwnd,
+            IntPtr.Zero,
+            _dragStartRect.Left + (screenPoint.X - _dragStartCursorX),
+            _dragStartRect.Top + (screenPoint.Y - _dragStartCursorY),
+            0, 0,
+            NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
+    }
+
+    private void EndDrag()
+    {
+        DragLog("BRIDGE", $"drag end ({_dragSource})");
+        _dragSource = DragSource.None;
+    }
+
+    private static (int X, int Y) UnpackPoint(IntPtr lParam)
+    {
+        return (unchecked((short)(lParam.ToInt64() & 0xFFFF)),
+                unchecked((short)((lParam.ToInt64() >> 16) & 0xFFFF)));
+    }
+
+    private static (int X, int Y) ClientToScreen(IntPtr hwnd, (int X, int Y) clientPoint)
+    {
+        var p = new NativeMethods.POINT { X = clientPoint.X, Y = clientPoint.Y };
+        NativeMethods.ClientToScreen(hwnd, ref p);
+        return (p.X, p.Y);
+    }
+
+    // Diagnostic tap, active only when BENGY_DRAG_LOG names a file (the E2E
+    // sandbox sets it). Records the input messages relevant to the caption
+    // drag so a failed drag can be attributed from a test run's artifacts.
+    private static readonly string? DragLogPath =
+        Environment.GetEnvironmentVariable("BENGY_DRAG_LOG");
+
+    private static void DragLog(string source, uint msg, IntPtr wParam)
+    {
+        if (DragLogPath is null) return;
+
+        var name = msg switch
+        {
+            NativeMethods.WM_NCLBUTTONDOWN => "WM_NCLBUTTONDOWN",
+            NativeMethods.WM_NCLBUTTONUP => "WM_NCLBUTTONUP",
+            NativeMethods.WM_SYSCOMMAND => "WM_SYSCOMMAND",
+            NativeMethods.WM_LBUTTONDOWN => "WM_LBUTTONDOWN",
+            NativeMethods.WM_CAPTURECHANGED => "WM_CAPTURECHANGED",
+            NativeMethods.WM_ENTERSIZEMOVE => "WM_ENTERSIZEMOVE",
+            NativeMethods.WM_EXITSIZEMOVE => "WM_EXITSIZEMOVE",
+            NativeMethods.WM_NCPOINTERDOWN => "WM_NCPOINTERDOWN",
+            NativeMethods.WM_NCPOINTERUP => "WM_NCPOINTERUP",
+            NativeMethods.WM_POINTERDOWN => "WM_POINTERDOWN",
+            NativeMethods.WM_POINTERUP => "WM_POINTERUP",
+            NativeMethods.WM_POINTERENTER => "WM_POINTERENTER",
+            NativeMethods.WM_POINTERLEAVE => "WM_POINTERLEAVE",
+            _ => null,
+        };
+        if (name is null) return;
+
+        DragLog(source, $"{name} wParam=0x{wParam.ToInt64():X}");
+    }
+
+    private static void DragLog(string source, string text)
+    {
+        if (DragLogPath is null) return;
+
+        try
+        {
+            System.IO.File.AppendAllText(
+                DragLogPath,
+                $"{DateTime.Now:HH:mm:ss.fff} {source} {text}\r\n");
+        }
+        catch
+        {
+            // Diagnostics must never take the window proc down.
+        }
+    }
+
+    // Screen-space in, evaluated in top-level client space (which the bridge
+    // shares, since it fills the client area).
+    private bool IsInDragZone((int X, int Y) screenPoint)
+    {
+        var point = new NativeMethods.POINT { X = screenPoint.X, Y = screenPoint.Y };
+        return NativeMethods.ScreenToClient(_hwnd, ref point)
+            && point.Y >= 0 && point.Y < CaptionHeight
+            && point.X >= _dragLeftExclusion
+            && point.X < PaletteWidth - _dragRightExclusion;
     }
 
     /// <summary>PowerToys Run position: centered horizontally, top at 25% of the work area.</summary>
@@ -184,6 +414,7 @@ public class WindowService : IWindowService
     {
         if (_nativeWindow == null || _appWindow == null) return;
 
+        TrySubclassBridge();   // no-op once bound; covers bridge created after Initialize
         _appWindow.Show();
 
         // Restore from minimized state (taskbar) before activating
