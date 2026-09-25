@@ -35,7 +35,11 @@ param(
     # to close it: a forgotten open sandbox makes the next invocation throw
     # "already running", and it is easy to then misread the previous run's TRX
     # as the new result.
-    [switch]$KeepOpen
+    [switch]$KeepOpen,
+
+    # Optional dotnet test --filter expression for a targeted run, e.g.
+    # "FullyQualifiedName~LayoutFitTests".
+    [string]$Filter = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -129,10 +133,33 @@ $env:BENGY_DRAG_LOG = "$env:TEMP\bengy-drag-log.txt"
 "BENGY_EXE_PATH exists: $(Test-Path $env:BENGY_EXE_PATH)"
 Set-Location $work
 
+# Record the display scale the suite ran at. The sandbox's remote-session
+# display is locked to the host-derived scale: it offers no alternative
+# scales (DISPLAYCONFIG get-DPI reports min=cur=max=0), refuses changes
+# (ACCESS_DENIED), and silently ignores the legacy SPI_SETLOGICALDPIOVERRIDE.
+# Layout bugs that only exist on scaled displays cannot be reproduced here;
+# check those on a real scaled display.
+Add-Type @"
+using System; using System.Runtime.InteropServices;
+public static class GuestDpi {
+    [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+    [DllImport("user32.dll")] public static extern IntPtr MonitorFromPoint(POINT pt, uint flags);
+    [DllImport("shcore.dll")] public static extern int GetDpiForMonitor(IntPtr monitor, int type, out uint dpiX, out uint dpiY);
+    [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
+    public static uint PrimaryDpi() { uint x, y; GetDpiForMonitor(MonitorFromPoint(new POINT(), 1), 0, out x, out y); return x; }
+}
+"@
+[GuestDpi]::SetProcessDpiAwarenessContext([IntPtr]-4) | Out-Null
+"$([int]([GuestDpi]::PrimaryDpi() * 100 / 96))%" | Set-Content "$work\scale.txt"
+
+$filterArgs = @()
+if ('{FILTER}') { $filterArgs = @('--filter', '{FILTER}') }
+
 & "$desk\dotnet\dotnet.exe" test "$desk\{REPO}\{TESTDLL}" `
     --logger 'trx;LogFileName=sandbox.trx' `
     --results-directory "$work\TestResults" `
     --settings "$desk\{REPO}\tests\BeNGy.E2ETests\e2e.runsettings" `
+    @filterArgs `
     *>&1 | Tee-Object -FilePath "$work\test-output.txt"
 
 if (Test-Path $env:BENGY_DRAG_LOG) { Copy-Item $env:BENGY_DRAG_LOG "$work\drag-log.txt" -Force }
@@ -144,7 +171,8 @@ $guestScript = $guestScript.
     Replace('{WORK}', $workLeaf).
     Replace('{REPO}', $repoLeaf).
     Replace('{APPEXE}', $appExeRel).
-    Replace('{TESTDLL}', $testDllRel)
+    Replace('{TESTDLL}', $testDllRel).
+    Replace('{FILTER}', $Filter.Replace("'", "''"))
 Set-Content -Path (Join-Path $work 'run-e2e.ps1') -Value $guestScript -Encoding utf8
 
 # ── Sandbox configuration ────────────────────────────────────────────────────
@@ -193,6 +221,9 @@ if (-not (Test-Path $doneFile)) {
     if (-not $KeepOpen) { Close-SandboxSession }
     exit 2
 }
+
+$scaleFile = Join-Path $work 'scale.txt'
+if (Test-Path $scaleFile) { Write-Host "Guest display scale: $((Get-Content $scaleFile).Trim())" }
 
 # ── Report ───────────────────────────────────────────────────────────────────
 $trx = Join-Path $work 'TestResults\sandbox.trx'
