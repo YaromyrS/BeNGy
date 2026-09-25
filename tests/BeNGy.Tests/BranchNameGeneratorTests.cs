@@ -63,7 +63,7 @@ public class BranchNameGeneratorTests
     // ── Title only ───────────────────────────────────────────────
 
     [Fact]
-    public void Generate_TitleOnly_ReturnsPrefixAndTitle()
+    public void Generate_TitleOnly_JoinsPrefixAndTitleWithPrefixSeparator()
     {
         var input = new BranchInput
         {
@@ -74,7 +74,25 @@ public class BranchNameGeneratorTests
 
         var result = _generator.Generate(input);
 
-        Assert.Equal("feature_add-user-login", result);
+        // "feature/..." so git tools group it under the feature/ folder.
+        Assert.Equal("feature/add-user-login", result);
+    }
+
+    [Fact]
+    public void Generate_TitleOnly_HonorsCustomPrefixSeparator()
+    {
+        var input = new BranchInput
+        {
+            Prefix = "feature",
+            TicketNumber = "",
+            Title = "Add User Login",
+            PrefixTicketSeparator = "-",
+            TicketTitleSeparator = "_"
+        };
+
+        var result = _generator.Generate(input);
+
+        Assert.Equal("feature-add-user-login", result);
     }
 
     // ── Full input ───────────────────────────────────────────────
