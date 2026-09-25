@@ -44,6 +44,10 @@ internal static class NativeMethods
     internal const uint WM_POINTERENTER = 0x0249;
     internal const uint WM_POINTERLEAVE = 0x024A;
     internal const uint WM_POINTERCAPTURECHANGED = 0x024C;
+    internal const uint WM_DPICHANGED = 0x02E0;
+
+    [DllImport("user32.dll")]
+    internal static extern uint GetDpiForWindow(IntPtr hWnd);
     internal static readonly IntPtr HTCLIENT = new(1);
     internal static readonly IntPtr HTCAPTION = new(2);
     internal static readonly IntPtr HTTRANSPARENT = new(-1);

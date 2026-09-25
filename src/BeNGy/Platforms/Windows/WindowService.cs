@@ -21,6 +21,11 @@ public class WindowService : IWindowService
         _themeService = themeService;
     }
 
+    // All layout constants below are device-independent pixels (the units
+    // XAML lays out in). AppWindow.Resize and every Win32 coordinate we touch
+    // are PHYSICAL pixels, so they go through Px()/Scale. The two coincide
+    // only at 100% display scaling -- at 125% an unscaled 560x216 window gave
+    // the content just 448x173 DIPs of room, so the UI did not fit.
     private const int PaletteWidth = 560;
 
     // Palette hugs its content; MainExpanded adds room for the validation
@@ -31,6 +36,13 @@ public class WindowService : IWindowService
     private const int MainHeight = 216;
     private const int MainExpandedHeight = 284;
     private const int SettingsHeight = 620;
+
+    private PaletteSurface _currentSurface = PaletteSurface.Main;
+
+    /// <summary>Physical pixels per device-independent pixel for the window's current monitor.</summary>
+    private double Scale => _hwnd == IntPtr.Zero ? 1.0 : NativeMethods.GetDpiForWindow(_hwnd) / 96.0;
+
+    private static int Px(int dip, double scale) => (int)Math.Round(dip * scale);
 
     // DWM window corner preference (Win11): 33 = DWMWA_WINDOW_CORNER_PREFERENCE, 2 = DWMWCP_ROUND
     private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
@@ -48,6 +60,7 @@ public class WindowService : IWindowService
     {
         _nativeWindow = nativeWindow;
         var hwnd = WindowNative.GetWindowHandle(nativeWindow);
+        _hwnd = hwnd;   // needed by Scale before SubclassForDrag runs
         var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hwnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
 
@@ -136,16 +149,20 @@ public class WindowService : IWindowService
         }
 
         if (_appWindow is null) return;
+        _currentSurface = surface;
         var height = surface switch
         {
             PaletteSurface.Settings => SettingsHeight,
             PaletteSurface.MainExpanded => MainExpandedHeight,
             _ => MainHeight,
         };
-        // Resize only: once the user drags the palette somewhere, that position
-        // is theirs. Growth is anchored top-left (downward), which reads
-        // naturally for the InfoBar and the settings page alike.
-        _appWindow.Resize(new SizeInt32(PaletteWidth, height));
+        // Resize, don't reposition: once the user drags the palette somewhere,
+        // that position is theirs. Growth is anchored top-left (downward), which
+        // reads naturally for the InfoBar and the settings page alike -- the one
+        // exception is the on-screen nudge in KeepInsideWorkArea.
+        var scale = Scale;
+        _appWindow.Resize(new SizeInt32(Px(PaletteWidth, scale), Px(height, scale)));
+        KeepInsideWorkArea();
 
         // Drag zone exclusions differ per surface: main has gear+close on the
         // right; settings has back on the left and close on the right.
@@ -234,7 +251,17 @@ public class WindowService : IWindowService
     {
         DragLog("TOP", msg, wParam);
 
-        return NativeMethods.CallWindowProc(_oldWndProc, hwnd, msg, wParam, lParam);
+        var result = NativeMethods.CallWindowProc(_oldWndProc, hwnd, msg, wParam, lParam);
+
+        // Moved to a monitor with a different scale (or the scale changed):
+        // WinUI has re-laid-out the content by now; re-derive the physical
+        // window size from the DIP constants for the new DPI.
+        if (msg == NativeMethods.WM_DPICHANGED)
+        {
+            SetPaletteSize(_currentSurface);
+        }
+
+        return result;
     }
 
     // Manual move loop on the bridge window: record the window origin on a
@@ -394,10 +421,27 @@ public class WindowService : IWindowService
     private bool IsInDragZone((int X, int Y) screenPoint)
     {
         var point = new NativeMethods.POINT { X = screenPoint.X, Y = screenPoint.Y };
+        var scale = Scale;   // client coords are physical; zone constants are DIPs
         return NativeMethods.ScreenToClient(_hwnd, ref point)
-            && point.Y >= 0 && point.Y < CaptionHeight
-            && point.X >= _dragLeftExclusion
-            && point.X < PaletteWidth - _dragRightExclusion;
+            && point.Y >= 0 && point.Y < Px(CaptionHeight, scale)
+            && point.X >= Px(_dragLeftExclusion, scale)
+            && point.X < Px(PaletteWidth - _dragRightExclusion, scale);
+    }
+
+    /// <summary>
+    /// Growth is downward, so a palette low on the screen -- dragged there, or
+    /// simply opened on a short display (1080p at 125% leaves 816 DIPs of work
+    /// area; Settings opened from the 25% default position needs 824) -- would
+    /// grow under the taskbar. Nudge it up just enough; never above the top.
+    /// </summary>
+    private void KeepInsideWorkArea()
+    {
+        if (_appWindow is null) return;
+        var area = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Nearest).WorkArea;
+        var position = _appWindow.Position;
+        var overflow = position.Y + _appWindow.Size.Height - (area.Y + area.Height);
+        if (overflow <= 0) return;
+        _appWindow.Move(new PointInt32(position.X, Math.Max(area.Y, position.Y - overflow)));
     }
 
     /// <summary>PowerToys Run position: centered horizontally, top at 25% of the work area.</summary>
