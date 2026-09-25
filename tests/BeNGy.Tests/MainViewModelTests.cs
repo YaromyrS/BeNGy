@@ -309,65 +309,56 @@ public class MainViewModelTests
     }
 
     // ── Specific invalid character feedback ─────────────────────
+    // ValidationMessage is the warning InfoBar's only text, so it alone must
+    // name the offending characters in a readable form.
 
     [Fact]
-    public void HasInvalidCharacters_False_WhenValid()
+    public void ValidationMessage_Empty_WhenValid()
     {
         _viewModel.Prefix = "feature";
         _viewModel.TicketNumber = "PROJ-123";
 
-        Assert.False(_viewModel.HasInvalidCharacters);
-        Assert.Equal(string.Empty, _viewModel.InvalidCharactersDisplay);
+        Assert.Equal(string.Empty, _viewModel.ValidationMessage);
     }
 
     [Fact]
-    public void HasInvalidCharacters_True_WhenInvalidCharPresent()
+    public void ValidationMessage_QuotesIndividualInvalidChars()
     {
         _viewModel.Prefix = "feature";
         _viewModel.TicketNumber = "PROJ?123";
 
-        Assert.True(_viewModel.HasInvalidCharacters);
-        Assert.NotEmpty(_viewModel.InvalidCharactersDisplay);
+        Assert.Contains("'?'", _viewModel.ValidationMessage);
     }
 
     [Fact]
-    public void InvalidCharactersDisplay_QuotesIndividualChars()
-    {
-        _viewModel.Prefix = "feature";
-        _viewModel.TicketNumber = "PROJ?123";
-
-        Assert.Contains("'?'", _viewModel.InvalidCharactersDisplay);
-    }
-
-    [Fact]
-    public void InvalidCharactersDisplay_ShowsWordForSpace()
+    public void ValidationMessage_ShowsWordForSpace()
     {
         _viewModel.Prefix = "feature";
         _viewModel.TicketNumber = "PROJ 123";
 
-        Assert.Contains("space", _viewModel.InvalidCharactersDisplay);
+        Assert.Contains("space", _viewModel.ValidationMessage);
     }
 
     [Fact]
-    public void InvalidCharactersDisplay_ListsAllInvalidChars()
+    public void ValidationMessage_ListsAllInvalidChars()
     {
         _viewModel.Prefix = "feature";
         _viewModel.TicketNumber = "PR?OJ*123";
 
-        var display = _viewModel.InvalidCharactersDisplay;
-        Assert.Contains("'?'", display);
-        Assert.Contains("'*'", display);
+        var message = _viewModel.ValidationMessage;
+        Assert.Contains("'?'", message);
+        Assert.Contains("'*'", message);
     }
 
     [Fact]
-    public void InvalidCharactersDisplay_ClearsWhenFixed()
+    public void ValidationMessage_ClearsWhenFixed()
     {
         _viewModel.Prefix = "feature";
         _viewModel.TicketNumber = "PROJ?123";
-        Assert.NotEmpty(_viewModel.InvalidCharactersDisplay);
+        Assert.NotEmpty(_viewModel.ValidationMessage);
 
         _viewModel.TicketNumber = "PROJ-123";
-        Assert.Equal(string.Empty, _viewModel.InvalidCharactersDisplay);
+        Assert.Equal(string.Empty, _viewModel.ValidationMessage);
     }
 
     [Fact]

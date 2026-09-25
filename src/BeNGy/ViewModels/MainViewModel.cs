@@ -73,50 +73,22 @@ public partial class MainViewModel : BaseViewModel
     // ── Branch name + validation ───────────────────────────────────
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasBranchName))]
     private string _generatedBranchName = string.Empty;
-
-    /// <summary>
-    /// True once there is actually a branch name to judge. Drives the validation status
-    /// row, so a freshly opened empty form does not announce "Valid" before the user has
-    /// typed anything.
-    /// </summary>
-    public bool HasBranchName => !string.IsNullOrEmpty(GeneratedBranchName);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsValid))]
     [NotifyPropertyChangedFor(nameof(ValidationMessage))]
-    [NotifyPropertyChangedFor(nameof(InvalidCharactersDisplay))]
-    [NotifyPropertyChangedFor(nameof(HasInvalidCharacters))]
     private ValidationResult _validationResult = ValidationResult.Valid();
 
     /// <summary>True when the generated branch name passes all git validation rules.</summary>
     public bool IsValid => ValidationResult.IsValid;
 
-    /// <summary>Human-readable summary of all validation errors, or empty when valid.</summary>
-    public string ValidationMessage => ValidationResult.ErrorMessage;
-
-    /// <summary>True when validation failed AND there are specific invalid characters to display.</summary>
-    public bool HasInvalidCharacters =>
-        !ValidationResult.IsValid && ValidationResult.InvalidCharacters.Count > 0;
-
     /// <summary>
-    /// Formatted list of invalid characters found (e.g. "'@', space, '?'").
-    /// Empty string when there are no invalid-character violations.
+    /// Human-readable summary of all validation errors, or empty when valid. This is
+    /// the warning InfoBar's only text: it already lists offending characters
+    /// (e.g. "Invalid characters: '?', space"), so no separate character row exists.
     /// </summary>
-    public string InvalidCharactersDisplay
-    {
-        get
-        {
-            if (ValidationResult.IsValid || ValidationResult.InvalidCharacters.Count == 0)
-                return string.Empty;
-
-            var formattedChars = ValidationResult.InvalidCharacters
-                .Select(c => c == ' ' ? "space" : $"'{c}'");
-
-            return string.Join(", ", formattedChars);
-        }
-    }
+    public string ValidationMessage => ValidationResult.ErrorMessage;
 
     // ── Copy / clipboard (Story 4.1 + 4.3 + 6.7) ───────────────────
 

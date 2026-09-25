@@ -81,22 +81,22 @@ public class LayoutFitTests
 
         var windowBounds = window.BoundingRectangle;
         var copyButton = _fixture.WaitForElement(window, AutomationIds.CopyButton);
-        // Bottom-most element of the invalid state is the invalid-chars row
-        // inside the InfoBar (the copy-blocked hint was removed by design).
-        var invalidChars = _fixture.WaitForElement(window, AutomationIds.InvalidCharsLabel);
+        // Bottom-most element of the invalid state is the warning message inside
+        // the InfoBar (its only text since the duplicate characters row went).
+        var warning = _fixture.WaitForElement(window, AutomationIds.ValidationMessageLabel);
 
-        _output.WriteLine($"window:       {windowBounds}");
-        _output.WriteLine($"copyButton:   {copyButton.BoundingRectangle}");
-        _output.WriteLine($"invalidChars: {invalidChars.BoundingRectangle} offscreen={invalidChars.IsOffscreen}");
+        _output.WriteLine($"window:     {windowBounds}");
+        _output.WriteLine($"copyButton: {copyButton.BoundingRectangle}");
+        _output.WriteLine($"warning:    {warning.BoundingRectangle} offscreen={warning.IsOffscreen}");
 
         Assert.True(
             copyButton.BoundingRectangle.Bottom <= windowBounds.Bottom,
             $"Copy button is clipped by {copyButton.BoundingRectangle.Bottom - windowBounds.Bottom}px in the invalid state.");
 
-        Assert.False(invalidChars.IsOffscreen, "The invalid-characters detail is not visible.");
+        Assert.False(warning.IsOffscreen, "The validation warning is not visible.");
         Assert.True(
-            invalidChars.BoundingRectangle.Bottom <= windowBounds.Bottom,
-            $"InfoBar content is clipped by {invalidChars.BoundingRectangle.Bottom - windowBounds.Bottom}px.");
+            warning.BoundingRectangle.Bottom <= windowBounds.Bottom,
+            $"InfoBar content is clipped by {warning.BoundingRectangle.Bottom - windowBounds.Bottom}px.");
     }
 
     [Fact]

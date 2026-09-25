@@ -342,6 +342,19 @@ public class AppTestFixture : IDisposable
     }
 
     /// <summary>
+    /// Empties the ticket and title fields. The suite shares one app instance and
+    /// the form is never reset between tests, so a field an earlier test left
+    /// invalid (e.g. "PROJ 123" in the ticket) keeps the validation warning up no
+    /// matter what the next test types into the other field.
+    /// </summary>
+    public void ClearMainForm(Window window)
+    {
+        TypeText(WaitForElement(window, AutomationIds.TicketEntry), string.Empty);
+        TypeText(WaitForElement(window, AutomationIds.TitleEntry), string.Empty);
+        Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(300));
+    }
+
+    /// <summary>
     /// Reads the current clipboard text content using Win32 APIs.
     /// </summary>
     public string GetClipboardText()

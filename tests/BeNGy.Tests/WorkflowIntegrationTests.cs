@@ -167,16 +167,14 @@ public class WorkflowIntegrationTests
 
         Assert.False(vm.IsValid);
         Assert.False(vm.CopyCommand.CanExecute(null));
-        Assert.True(vm.HasInvalidCharacters);
-        Assert.Contains("'?'", vm.InvalidCharactersDisplay);
+        Assert.Contains("'?'", vm.ValidationMessage);
 
         // Fix input
         vm.TicketNumber = "PROJ-123";
 
         Assert.True(vm.IsValid);
         Assert.True(vm.CopyCommand.CanExecute(null));
-        Assert.False(vm.HasInvalidCharacters);
-        Assert.Equal(string.Empty, vm.InvalidCharactersDisplay);
+        Assert.Equal(string.Empty, vm.ValidationMessage);
     }
 
     [Fact]

@@ -16,9 +16,8 @@ public static class AutomationIds
     // with the palette redesign: valid input shows no verdict UI at all.
     public const string ValidationMessageLabel = "ValidationMessageLabel";
     public const string ValidationWarningSection = "ValidationWarningSection";
-    public const string InvalidCharsRow = "InvalidCharsRow";
-    public const string InvalidCharsLabel = "InvalidCharsLabel";
-    public const string InvalidCharsPrefix = "InvalidCharsPrefix";
+    // InvalidCharsRow / InvalidCharsLabel / InvalidCharsPrefix were removed: they
+    // repeated what ValidationMessageLabel already says ("Invalid characters: '?'").
 
     // ── SettingsPage ────────────────────────────────────────────
     public const string DefaultPrefixPicker = "DefaultPrefixPicker";

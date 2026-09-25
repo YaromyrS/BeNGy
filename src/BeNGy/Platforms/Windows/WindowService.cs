@@ -28,16 +28,19 @@ public class WindowService : IWindowService
     // the content just 448x173 DIPs of room, so the UI did not fit.
     private const int PaletteWidth = 560;
 
-    // Palette hugs its content; MainExpanded adds room for the validation
-    // InfoBar, Settings for the card list. Every surface must fit EVERY
-    // control it can show -- an undersized window once left the Copy button
-    // laid out past the bottom edge, invisible and unclickable, while UI
-    // Automation still Invoked it happily (see LayoutFitTests).
+    // The main page hugs its MEASURED content (FitPaletteToContent): a fixed
+    // "expanded" height can't be right for both a one-line and a wrapped
+    // multi-error warning. MainHeight is only the size before the first
+    // layout pass; Settings is a fixed scrolling page. Every state must fit
+    // every control it shows -- an undersized window once left the Copy
+    // button laid out past the bottom edge, invisible and unclickable, while
+    // UI Automation still Invoked it happily (see LayoutFitTests).
     private const int MainHeight = 216;
-    private const int MainExpandedHeight = 284;
     private const int SettingsHeight = 620;
+    private const int MinContentHeight = 100;   // ignore transient mid-layout measurements
 
-    private PaletteSurface _currentSurface = PaletteSurface.Main;
+    private int _currentHeight = MainHeight;
+    private bool _currentIsSettings;
 
     /// <summary>Physical pixels per device-independent pixel for the window's current monitor.</summary>
     private double Scale => _hwnd == IntPtr.Zero ? 1.0 : NativeMethods.GetDpiForWindow(_hwnd) / 96.0;
@@ -138,24 +141,31 @@ public class WindowService : IWindowService
 
     public void SetPaletteSize(PaletteSurface surface)
     {
-        // Callers include ViewModel PropertyChanged handlers, which can run off
-        // the UI thread (e.g. UIA-driven value changes). AppWindow tolerates
-        // that; InputNonClientPointerSource does NOT — calling it off-thread
-        // took the whole app down (COM E_UNEXPECTED) mid-E2E-suite.
+        var isSettings = surface == PaletteSurface.Settings;
+        ApplyPaletteSize(isSettings ? SettingsHeight : MainHeight, isSettings);
+    }
+
+    public void FitPaletteToContent(double contentHeight)
+    {
+        if (contentHeight < MinContentHeight) return;
+        ApplyPaletteSize((int)Math.Ceiling(Math.Min(contentHeight, SettingsHeight)), isSettings: false);
+    }
+
+    private void ApplyPaletteSize(int height, bool isSettings)
+    {
+        // Keep every window mutation on the UI thread: an off-thread native
+        // window call once took the whole app down (COM E_UNEXPECTED)
+        // mid-E2E-suite, and callers include property-change handlers that can
+        // run elsewhere (e.g. UIA-driven value changes).
         if (!MainThread.IsMainThread)
         {
-            MainThread.BeginInvokeOnMainThread(() => SetPaletteSize(surface));
+            MainThread.BeginInvokeOnMainThread(() => ApplyPaletteSize(height, isSettings));
             return;
         }
 
         if (_appWindow is null) return;
-        _currentSurface = surface;
-        var height = surface switch
-        {
-            PaletteSurface.Settings => SettingsHeight,
-            PaletteSurface.MainExpanded => MainExpandedHeight,
-            _ => MainHeight,
-        };
+        (_currentHeight, _currentIsSettings) = (height, isSettings);
+
         // Resize, don't reposition: once the user drags the palette somewhere,
         // that position is theirs. Growth is anchored top-left (downward), which
         // reads naturally for the InfoBar and the settings page alike -- the one
@@ -164,11 +174,9 @@ public class WindowService : IWindowService
         _appWindow.Resize(new SizeInt32(Px(PaletteWidth, scale), Px(height, scale)));
         KeepInsideWorkArea();
 
-        // Drag zone exclusions differ per surface: main has gear+close on the
+        // Drag zone exclusions differ per page: main has gear+close on the
         // right; settings has back on the left and close on the right.
-        (_dragLeftExclusion, _dragRightExclusion) = surface == PaletteSurface.Settings
-            ? (60, 60)
-            : (0, 100);
+        (_dragLeftExclusion, _dragRightExclusion) = isSettings ? (60, 60) : (0, 100);
     }
 
     // ── Header dragging ────────────────────────────────────────────
@@ -254,11 +262,11 @@ public class WindowService : IWindowService
         var result = NativeMethods.CallWindowProc(_oldWndProc, hwnd, msg, wParam, lParam);
 
         // Moved to a monitor with a different scale (or the scale changed):
-        // WinUI has re-laid-out the content by now; re-derive the physical
-        // window size from the DIP constants for the new DPI.
+        // the DIP height is unchanged, so re-derive the physical window size
+        // from it for the new DPI.
         if (msg == NativeMethods.WM_DPICHANGED)
         {
-            SetPaletteSize(_currentSurface);
+            ApplyPaletteSize(_currentHeight, _currentIsSettings);
         }
 
         return result;

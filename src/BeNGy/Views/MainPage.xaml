@@ -9,8 +9,11 @@
 			 BackgroundColor="Transparent"
 			 NavigationPage.HasNavigationBar="False">
 
+	<!-- ContentRoot's Height is what the window is fitted to. VerticalOptions
+	     Start is load-bearing: a ScrollView stretches Fill content to at least
+	     the viewport, so the measured height could grow but never shrink back. -->
 	<ScrollView>
-		<VerticalStackLayout Spacing="12" Padding="20,14,20,14">
+		<VerticalStackLayout x:Name="ContentRoot" VerticalOptions="Start" Spacing="12" Padding="20,14,20,14">
 
 			<!-- Header. Dragging is handled natively by WindowService (pointer
 			     messages on the WinUI bridge window) — no gestures here. -->
@@ -101,8 +104,9 @@
 				</Grid>
 			</Border>
 
-			<!-- One amber InfoBar replaces the loose warning labels; every
-			     AutomationId inside survives for the E2E assertions. -->
+			<!-- One amber InfoBar with a single message: the validator's text
+			     already names the offending characters, so a second "characters
+			     not allowed" row would only repeat it. -->
 			<Border
 				Style="{StaticResource WarningInfoBar}"
 				IsVisible="{Binding IsValid, Converter={toolkit:InvertedBoolConverter}}">
@@ -116,31 +120,13 @@
 						FontSize="16"
 						TextColor="{AppThemeBinding Light={StaticResource WarningText}, Dark={StaticResource WarningTextDark}}"
 						VerticalOptions="Start" />
-					<VerticalStackLayout Grid.Column="1" Spacing="2">
-						<Label
-							AutomationId="ValidationMessageLabel"
-							Style="{StaticResource Caption}"
-							TextColor="{AppThemeBinding Light={StaticResource WarningText}, Dark={StaticResource WarningTextDark}}"
-							Text="{Binding ValidationMessage}"
-							IsVisible="{Binding ValidationMessage, Converter={StaticResource StringNotEmptyConverter}}"
-							LineBreakMode="WordWrap" />
-						<HorizontalStackLayout AutomationId="InvalidCharsRow" IsVisible="{Binding HasInvalidCharacters}" Spacing="4">
-							<Label
-								AutomationId="InvalidCharsPrefix"
-								Style="{StaticResource Caption}"
-								TextColor="{AppThemeBinding Light={StaticResource WarningText}, Dark={StaticResource WarningTextDark}}"
-								Text="Characters not allowed:"
-								VerticalOptions="Center" />
-							<Label
-								AutomationId="InvalidCharsLabel"
-								Style="{StaticResource MonoText}"
-								FontSize="12"
-								FontAttributes="Bold"
-								TextColor="{AppThemeBinding Light={StaticResource WarningText}, Dark={StaticResource WarningTextDark}}"
-								Text="{Binding InvalidCharactersDisplay}"
-								VerticalOptions="Center" />
-						</HorizontalStackLayout>
-					</VerticalStackLayout>
+					<Label Grid.Column="1"
+						AutomationId="ValidationMessageLabel"
+						Style="{StaticResource Caption}"
+						TextColor="{AppThemeBinding Light={StaticResource WarningText}, Dark={StaticResource WarningTextDark}}"
+						Text="{Binding ValidationMessage}"
+						IsVisible="{Binding ValidationMessage, Converter={StaticResource StringNotEmptyConverter}}"
+						LineBreakMode="WordWrap" />
 				</Grid>
 			</Border>
 

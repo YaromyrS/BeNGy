@@ -20,7 +20,12 @@ public class Epic3_ValidationTests
     private Window GetWindow()
     {
         _fixture.EnsureRunning();
-        return _fixture.GetMainWindow();
+        var window = _fixture.GetMainWindow();
+
+        // Validation state depends on BOTH fields, so every test here must start
+        // from an empty form rather than inherit whatever the previous test typed.
+        _fixture.ClearMainForm(window);
+        return window;
     }
 
     [Fact]
@@ -77,14 +82,14 @@ public class Epic3_ValidationTests
         _fixture.TypeText(titleEntry, "bad?title");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Assert — invalid chars label shows the "?" character
-        var invalidCharsLabel = _fixture.WaitForElement(window, AutomationIds.InvalidCharsLabel);
-        var labelText = invalidCharsLabel.AsLabel().Text;
+        // Assert — the warning message names the "?" character
+        var messageLabel = _fixture.WaitForElement(window, AutomationIds.ValidationMessageLabel);
+        var labelText = messageLabel.AsLabel().Text;
         Assert.Contains("?", labelText);
     }
 
     [Fact]
-    public void Validation_SpaceInTicket_ShowsSpaceInInvalidCharsDisplay() // FR12, FR13
+    public void Validation_SpaceInTicket_WarningSpellsOutSpace() // FR12, FR13
     {
         // Arrange
         var window = GetWindow();
@@ -94,9 +99,9 @@ public class Epic3_ValidationTests
         _fixture.TypeText(ticketEntry, "PROJ 123");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Assert — invalid chars display mentions "space"
-        var invalidCharsLabel = _fixture.WaitForElement(window, AutomationIds.InvalidCharsLabel);
-        var labelText = invalidCharsLabel.AsLabel().Text;
+        // Assert — the warning message spells out "space"
+        var messageLabel = _fixture.WaitForElement(window, AutomationIds.ValidationMessageLabel);
+        var labelText = messageLabel.AsLabel().Text;
         Assert.Contains("space", labelText, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -111,9 +116,9 @@ public class Epic3_ValidationTests
         _fixture.TypeText(titleEntry, "bad?ti~tle");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Assert — both invalid chars are listed
-        var invalidCharsLabel = _fixture.WaitForElement(window, AutomationIds.InvalidCharsLabel);
-        var labelText = invalidCharsLabel.AsLabel().Text;
+        // Assert — both invalid chars are named in the warning message
+        var messageLabel = _fixture.WaitForElement(window, AutomationIds.ValidationMessageLabel);
+        var labelText = messageLabel.AsLabel().Text;
         Assert.Contains("?", labelText);
         Assert.Contains("~", labelText);
     }

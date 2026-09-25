@@ -6,6 +6,7 @@ public partial class MainPage : ContentPage
 {
 	private readonly MainViewModel _viewModel;
 	private readonly IWindowService? _windowService;
+	private bool _isCurrentPage;
 
 	public MainPage(MainViewModel viewModel, IWindowService? windowService = null)
 	{
@@ -17,19 +18,22 @@ public partial class MainPage : ContentPage
 		// Tab from Ticket → Title via Return key (NFR11)
 		TicketEntry.Completed += (_, _) => TitleEntry.Focus();
 
-		// The palette hugs its content: grow when the validation InfoBar
-		// appears, shrink back when the input becomes valid again.
-		_viewModel.PropertyChanged += (_, e) =>
-		{
-			if (e.PropertyName is nameof(MainViewModel.IsValid) or nameof(MainViewModel.HasBranchName))
-				UpdateSurface();
-		};
+		// The palette hugs its content: whenever the form's measured height
+		// changes (validation warning appears, wraps to more lines, or goes
+		// away), fit the window to it.
+		ContentRoot.SizeChanged += (_, _) => UpdateSurface();
 	}
 
 	private void UpdateSurface()
 	{
-		var expanded = _viewModel.HasBranchName && !_viewModel.IsValid;
-		_windowService?.SetPaletteSize(expanded ? PaletteSurface.MainExpanded : PaletteSurface.Main);
+		// Settings sits on top of this page in the navigation stack and owns
+		// the window size while it is shown.
+		if (!_isCurrentPage) return;
+
+		if (ContentRoot.Height > 0)
+			_windowService?.FitPaletteToContent(ContentRoot.Height);
+		else
+			_windowService?.SetPaletteSize(PaletteSurface.Main);   // before the first layout pass
 	}
 
 	private void OnSettingsClicked(object sender, EventArgs e)
@@ -40,6 +44,7 @@ public partial class MainPage : ContentPage
 	protected override void OnAppearing()
 	{
 		base.OnAppearing();
+		_isCurrentPage = true;
 
 		// Palette entrance: fade + rise + settle, PowerToys Run-style.
 		this.Opacity = 0;
@@ -80,6 +85,7 @@ public partial class MainPage : ContentPage
 	protected override void OnDisappearing()
 	{
 		base.OnDisappearing();
+		_isCurrentPage = false;
 
 		// Unregister Escape key handler to avoid leaks
 #if WINDOWS
