@@ -6,8 +6,15 @@
              x:DataType="vm:SettingsViewModel"
              Title="Settings"
              BackgroundColor="Transparent"
-             NavigationPage.HasNavigationBar="False">
+             NavigationPage.HasNavigationBar="False"
+             NavigationPage.HasBackButton="False">
 
+    <!-- HasBackButton="False" is NOT redundant with HasNavigationBar="False": the
+         hidden bar still left MAUI's NavigationView back button enabled and
+         keyboard-focusable (invisible, empty bounds). Opening Settings after
+         keyboard input put focus on it, so a stray "Back" tooltip popped at the
+         window corner and Tab had an invisible stop. The page has its own
+         DoneButton for going back. -->
     <Grid>
         <!-- Capture overlay retained from the original page (M1 fix) -->
         <BoxView IsVisible="{Binding IsCapturingHotkey}"
