@@ -61,13 +61,16 @@
 				ReturnType="Done"
 				ReturnCommand="{Binding CopyCommand}" />
 
-			<!-- Preview card: branch name | copy icon. The whole card copies. -->
+			<!-- Preview card: branch name | copy icon. The whole card copies.
+			     PreviewLabel uses SemanticProperties.Hint, NOT Description:
+			     Description replaces the accessible name, so screen readers (and
+			     UI Automation tests) got a fixed label instead of the branch name. -->
 			<Border Style="{StaticResource PreviewCard}" Padding="12,4" HeightRequest="44">
 				<Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
 					<Label
 						x:Name="PreviewLabel"
 						AutomationId="PreviewLabel"
-						SemanticProperties.Description="Generated branch name preview"
+						SemanticProperties.Hint="Generated branch name preview. Click to copy."
 						Style="{StaticResource MonoText}"
 						Text="{Binding GeneratedBranchName}"
 						TextColor="{AppThemeBinding Light={StaticResource TextPrimary}, Dark={StaticResource TextPrimaryDark}}"
