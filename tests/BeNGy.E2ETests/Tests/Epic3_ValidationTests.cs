@@ -14,18 +14,15 @@ public class Epic3_ValidationTests
     public Epic3_ValidationTests(AppTestFixture fixture)
     {
         _fixture = fixture;
-        _fixture.EnsureRunning();
+        _fixture.ResetForTest();
     }
 
     private Window GetWindow()
     {
+        // Starts from an empty form: the constructor's ResetForTest cleared both
+        // fields (validation state depends on BOTH, so a leftover ticket matters).
         _fixture.EnsureRunning();
-        var window = _fixture.GetMainWindow();
-
-        // Validation state depends on BOTH fields, so every test here must start
-        // from an empty form rather than inherit whatever the previous test typed.
-        _fixture.ClearMainForm(window);
-        return window;
+        return _fixture.GetMainWindow();
     }
 
     [Fact]

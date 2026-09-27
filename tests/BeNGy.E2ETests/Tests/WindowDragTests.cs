@@ -39,7 +39,7 @@ public class WindowDragTests
     public WindowDragTests(AppTestFixture fixture)
     {
         _fixture = fixture;
-        _fixture.EnsureRunning();
+        _fixture.ResetForTest();
     }
 
     [Fact]

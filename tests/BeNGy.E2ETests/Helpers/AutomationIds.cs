@@ -12,6 +12,7 @@ public static class AutomationIds
     public const string PreviewLabel = "PreviewLabel";
     public const string CopyButton = "CopyButton";
     public const string CloseButton = "CloseButton";
+    public const string SettingsButton = "SettingsButton";
     // ValidIndicator / InvalidIndicator / ValidationStatusLabel were removed
     // with the palette redesign: valid input shows no verdict UI at all.
     public const string ValidationMessageLabel = "ValidationMessageLabel";
@@ -20,6 +21,7 @@ public static class AutomationIds
     // repeated what ValidationMessageLabel already says ("Invalid characters: '?'").
 
     // ── SettingsPage ────────────────────────────────────────────
+    public const string DoneButton = "DoneButton";
     public const string DefaultPrefixPicker = "DefaultPrefixPicker";
     public const string TitleFormatPicker = "TitleFormatPicker";
     public const string PrefixSeparatorPicker = "PrefixSeparatorPicker";

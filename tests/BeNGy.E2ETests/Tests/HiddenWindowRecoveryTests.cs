@@ -26,7 +26,7 @@ public class HiddenWindowRecoveryTests
     public HiddenWindowRecoveryTests(AppTestFixture fixture)
     {
         _fixture = fixture;
-        _fixture.EnsureRunning();
+        _fixture.ResetForTest();
     }
 
     [Fact]

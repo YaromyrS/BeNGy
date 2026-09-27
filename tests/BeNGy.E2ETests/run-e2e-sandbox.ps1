@@ -18,7 +18,10 @@
         TestResults\sandbox.trx when the run finishes.
 
     Verified baseline: the sandbox produces bit-for-bit the same pass/fail set
-    as a host run (48/65 as of 2026-08-05), so it is a faithful environment.
+    as a host run (checked 2026-08-05), so it is a faithful environment. Since
+    2026-09-27 the expected result is ALL tests passing (65/65); any failure is
+    a regression. A busy host (CPU pegged, or a Moonlight stream) poisons runs
+    with app-launch timeouts: rerun on a quiet machine before believing one.
 
 .NOTES
     Requires the Windows Sandbox feature (Windows 10/11 Pro or Enterprise) and
@@ -129,6 +132,9 @@ $env:BENGY_EXE_PATH = "$desk\{REPO}\{APPEXE}"
 # window procedure, and a stall on the mapped-folder share would freeze the
 # app's UI thread. Copied to the mapped work dir after the run.
 $env:BENGY_DRAG_LOG = "$env:TEMP\bengy-drag-log.txt"
+# Failure screenshots / UIA outlines from AppTestFixture.CaptureDiagnostics. On
+# the mapped work dir so they survive the VM; written only on failure paths.
+$env:BENGY_DIAG_DIR = "$work\diag"
 
 "BENGY_EXE_PATH exists: $(Test-Path $env:BENGY_EXE_PATH)"
 Set-Location $work

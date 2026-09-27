@@ -19,7 +19,7 @@ public class Epic7_ThemeTests
     public Epic7_ThemeTests(AppTestFixture fixture)
     {
         _fixture = fixture;
-        _fixture.EnsureRunning();
+        _fixture.ResetForTest();
     }
 
     /// <summary>
@@ -65,7 +65,17 @@ public class Epic7_ThemeTests
         Wait.UntilInputIsProcessed(TimeSpan.FromSeconds(1));
         Thread.Sleep(500);
         var settingsWindow = _fixture.GetMainWindow();
-        _fixture.WaitForElement(settingsWindow, AutomationIds.DefaultPrefixPicker, TimeSpan.FromSeconds(5));
+        // 15s, not 5s: the first Settings open in a fresh Debug build JIT-compiles
+        // the whole page, which alone took longer than 5s inside the sandbox VM.
+        try
+        {
+            _fixture.WaitForElement(settingsWindow, AutomationIds.DefaultPrefixPicker, TimeSpan.FromSeconds(15));
+        }
+        catch (TimeoutException)
+        {
+            _fixture.CaptureDiagnostics("settings-did-not-open");
+            throw;
+        }
         return settingsWindow;
     }
 

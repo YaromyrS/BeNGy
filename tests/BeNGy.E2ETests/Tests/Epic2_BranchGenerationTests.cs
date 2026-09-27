@@ -14,7 +14,7 @@ public class Epic2_BranchGenerationTests
     public Epic2_BranchGenerationTests(AppTestFixture fixture)
     {
         _fixture = fixture;
-        _fixture.EnsureRunning();
+        _fixture.ResetForTest();
     }
 
     private Window GetWindow()
@@ -47,9 +47,11 @@ public class Epic2_BranchGenerationTests
     [Fact]
     public void PrefixPicker_Default_IsFeature() // FR7
     {
-        // Arrange
-        var window = GetWindow();
-        var picker = _fixture.WaitForElement(window, AutomationIds.PrefixPicker);
+        // Arrange — a fresh launch: ResetForTest selects "feature" itself, so
+        // only a new instance shows what the app picks on its own.
+        _fixture.LaunchApp();
+        var window = _fixture.GetMainWindow(TimeSpan.FromSeconds(10));
+        var picker = _fixture.WaitForElement(window, AutomationIds.PrefixPicker, TimeSpan.FromSeconds(15));
         var comboBox = picker.AsComboBox();
 
         // Assert
@@ -147,19 +149,11 @@ public class Epic2_BranchGenerationTests
     public void Preview_AllFieldsFilled_ShowsFullBranchFormat() // FR10, FR11
     {
         // Arrange
+        // ("feature" is already selected: ResetForTest's baseline prefix.)
         var window = GetWindow();
-        var prefixPicker = _fixture.WaitForElement(window, AutomationIds.PrefixPicker);
         var ticketEntry = _fixture.WaitForElement(window, AutomationIds.TicketEntry);
         var titleEntry = _fixture.WaitForElement(window, AutomationIds.TitleEntry);
         var previewLabel = _fixture.WaitForElement(window, AutomationIds.PreviewLabel);
-
-        // Ensure "feature" prefix is selected
-        var comboBox = prefixPicker.AsComboBox();
-        if (comboBox.SelectedItem?.Text?.ToLowerInvariant() != "feature")
-        {
-            comboBox.Select("feature");
-            Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(300));
-        }
 
         // Act
         _fixture.TypeText(ticketEntry, "PROJ-123");
@@ -205,9 +199,12 @@ public class Epic2_BranchGenerationTests
     [Fact]
     public void TicketEntry_OnWindowOpen_HasFocus() // FR8
     {
-        // Arrange — the window is already open
-        var window = GetWindow();
-        var ticketEntry = _fixture.WaitForElement(window, AutomationIds.TicketEntry);
+        // Arrange — actually open the window (hide, then summon the way a user
+        // does), rather than inherit whatever focus the previous test left.
+        _fixture.HideMainWindow();
+        _fixture.EnsureWindowVisible();
+        var window = _fixture.GetMainWindow();
+        _fixture.WaitForElement(window, AutomationIds.TicketEntry);
 
         // Assert — ticket field should have focus on window open
         // Give the app a moment to set initial focus

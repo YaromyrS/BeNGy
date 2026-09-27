@@ -15,7 +15,7 @@ public class Epic1_AppShellTests
     public Epic1_AppShellTests(AppTestFixture fixture)
     {
         _fixture = fixture;
-        _fixture.EnsureRunning();
+        _fixture.ResetForTest();
     }
 
     [Fact]
@@ -81,15 +81,15 @@ public class Epic1_AppShellTests
         }
     }
 
-    // Note: Tray icon tests (TrayIcon_ContextMenu, TrayIcon_ExitClicked) are
-    // environment-dependent and may not work in all CI configurations.
-    // They are kept but may need [Trait("Requirement", "TrayIcon")] for selective runs.
+    // Tray tests find the icon through AppTestFixture.FindTrayIcon, which opens
+    // Windows 11's "Show Hidden Icons" flyout when the icon is not promoted to
+    // the taskbar (the default for a new icon, and why these tests used to fail).
 
     [Fact]
     [Trait("Requirement", "TrayIcon")]
     public void TrayIcon_ContextMenu_HasExpectedMenuItems() // FR5, FR27
     {
-        var app = _fixture.EnsureRunning();
+        _fixture.EnsureRunning();
         var window = _fixture.GetMainWindow();
 
         // Hide window to tray
@@ -97,43 +97,28 @@ public class Epic1_AppShellTests
         Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.F4);
         _fixture.WaitForWindowClose(TimeSpan.FromSeconds(5));
 
+        var notifyIcon = _fixture.FindTrayIcon();
+        if (notifyIcon is null)
+            Assert.Fail("Could not locate the BeNGy tray icon, even in the overflow flyout.");
+
+        notifyIcon.RightClick();
+        Wait.UntilInputIsProcessed(TimeSpan.FromSeconds(1));
+
         var desktop = _fixture.Automation.GetDesktop();
-        var notifyIcon = Retry.WhileNull(
-            () =>
-            {
-                var candidates = desktop.FindAllDescendants(
-                    _fixture.Automation.ConditionFactory.ByName("BeNGy"));
-                return candidates.FirstOrDefault();
-            },
-            TimeSpan.FromSeconds(5),
-            TimeSpan.FromMilliseconds(500));
+        var openItem = desktop.FindFirstDescendant(
+            _fixture.Automation.ConditionFactory.ByName("Open"));
+        var settingsItem = desktop.FindFirstDescendant(
+            _fixture.Automation.ConditionFactory.ByName("Settings"));
+        var exitItem = desktop.FindFirstDescendant(
+            _fixture.Automation.ConditionFactory.ByName("Exit"));
 
-        if (notifyIcon.Result is not null)
-        {
-            notifyIcon.Result.RightClick();
-            Wait.UntilInputIsProcessed(TimeSpan.FromSeconds(1));
+        Assert.NotNull(openItem);
+        Assert.NotNull(settingsItem);
+        Assert.NotNull(exitItem);
 
-            var openItem = desktop.FindFirstDescendant(
-                _fixture.Automation.ConditionFactory.ByName("Open"));
-            var settingsItem = desktop.FindFirstDescendant(
-                _fixture.Automation.ConditionFactory.ByName("Settings"));
-            var exitItem = desktop.FindFirstDescendant(
-                _fixture.Automation.ConditionFactory.ByName("Exit"));
-
-            Assert.NotNull(openItem);
-            Assert.NotNull(settingsItem);
-            Assert.NotNull(exitItem);
-
-            // Click Open to restore window for subsequent tests
-            openItem.Click();
-            Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
-        }
-        else
-        {
-            // Tray icon may be in overflow area
-            _fixture.EnsureRunning();
-            Assert.Fail("Could not locate BeNGy tray icon in the notification area.");
-        }
+        // Click Open to restore window for subsequent tests
+        openItem.Click();
+        Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
     }
 
     [Fact]
@@ -148,37 +133,30 @@ public class Epic1_AppShellTests
         Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.F4);
         _fixture.WaitForWindowClose(TimeSpan.FromSeconds(5));
 
-        var desktop = _fixture.Automation.GetDesktop();
-        var notifyIcon = Retry.WhileNull(
-            () =>
-            {
-                var candidates = desktop.FindAllDescendants(
-                    _fixture.Automation.ConditionFactory.ByName("BeNGy"));
-                return candidates.FirstOrDefault();
-            },
-            TimeSpan.FromSeconds(5),
-            TimeSpan.FromMilliseconds(500));
-
-        if (notifyIcon.Result is not null)
+        try
         {
-            notifyIcon.Result.RightClick();
+            var notifyIcon = _fixture.FindTrayIcon();
+            if (notifyIcon is null)
+                Assert.Fail("Could not locate the BeNGy tray icon, even in the overflow flyout.");
+
+            notifyIcon.RightClick();
             Wait.UntilInputIsProcessed(TimeSpan.FromSeconds(1));
 
-            var exitItem = desktop.FindFirstDescendant(
+            var exitItem = _fixture.Automation.GetDesktop().FindFirstDescendant(
                 _fixture.Automation.ConditionFactory.ByName("Exit"));
             Assert.NotNull(exitItem);
             exitItem.Click();
 
             // Process should terminate
-            Thread.Sleep(2000);
-            Assert.True(app.HasExited, "Process should have terminated after Exit.");
+            var exited = Retry.WhileFalse(() => app.HasExited, TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(250));
+            Assert.True(exited.Result, "Process should have terminated after Exit.");
         }
-        else
+        finally
         {
-            Assert.Fail("Could not locate BeNGy tray icon in the notification area.");
+            // Relaunch for subsequent tests (the only test that truly kills the
+            // app); in finally so a failed assertion can't leave the suite
+            // without an app.
+            _fixture.LaunchApp();
         }
-
-        // Relaunch for subsequent tests (this is the only test that truly kills the app)
-        _fixture.LaunchApp();
     }
 }

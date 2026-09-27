@@ -23,7 +23,7 @@ public class LayoutFitTests
     {
         _fixture = fixture;
         _output = output;
-        _fixture.EnsureRunning();
+        _fixture.ResetForTest();
     }
 
     [Fact]

@@ -21,7 +21,7 @@ public class Epic5_HotkeyTests
     public Epic5_HotkeyTests(AppTestFixture fixture)
     {
         _fixture = fixture;
-        _fixture.EnsureRunning();
+        _fixture.ResetForTest();
     }
 
     [Fact]
@@ -66,8 +66,12 @@ public class Epic5_HotkeyTests
     [Fact]
     public void GlobalHotkey_AfterSummon_TicketFieldHasFocus() // FR3, FR28
     {
-        // Arrange - hide to tray (the palette is not minimizable by design)
+        // Arrange - leave focus in the TITLE field (where copy-and-auto-close
+        // leaves it in real use), then hide to tray. Starting from the ticket
+        // field would let the test pass without the app doing anything.
         _fixture.EnsureRunning();
+        _fixture.WaitForElement(_fixture.GetMainWindow(), AutomationIds.TitleEntry).Focus();
+        Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(300));
         _fixture.HideMainWindow();
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
@@ -78,19 +82,23 @@ public class Epic5_HotkeyTests
             VirtualKeyShort.KEY_B);
         Wait.UntilInputIsProcessed(TimeSpan.FromSeconds(1));
 
-        // Assert - ticket entry should have focus
+        // Assert - the summon moved focus to the ticket entry. (This used to be
+        // "focused is TicketEntry || ticketEntry's id is TicketEntry", and the
+        // second half is always true, so the test could never fail and the
+        // app bug it exists to catch shipped unnoticed.)
         var mainWindow = _fixture.GetMainWindow();
-        var ticketEntry = _fixture.WaitForElement(mainWindow, AutomationIds.TicketEntry, TimeSpan.FromSeconds(2));
-        Assert.NotNull(ticketEntry);
-
-        // Check that the ticket entry or a child of it has keyboard focus
-        var focusedElement = _fixture.Automation.FocusedElement();
-        Assert.NotNull(focusedElement);
-        // The focused element should be the ticket entry or within it
-        Assert.True(
-            focusedElement.Properties.AutomationId.ValueOrDefault == AutomationIds.TicketEntry
-            || ticketEntry.Properties.AutomationId.ValueOrDefault == AutomationIds.TicketEntry,
-            "Ticket entry field should receive focus after hotkey summon.");
+        _fixture.WaitForElement(mainWindow, AutomationIds.TicketEntry, TimeSpan.FromSeconds(2));
+        var focused = Retry.WhileNull(
+            () =>
+            {
+                var element = _fixture.Automation.FocusedElement();
+                return element?.Properties.AutomationId.ValueOrDefault == AutomationIds.TicketEntry ? element : null;
+            },
+            TimeSpan.FromSeconds(2),
+            TimeSpan.FromMilliseconds(100));
+        Assert.True(focused.Result is not null,
+            "Ticket entry field should receive focus after hotkey summon; focused: "
+            + _fixture.Automation.FocusedElement()?.Properties.AutomationId.ValueOrDefault);
     }
 
     [Fact]
@@ -140,61 +148,25 @@ public class Epic5_HotkeyTests
         _fixture.HideMainWindow();
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Act - find the system tray and open via context menu
-        // Look for the BeNGy notification icon in the system tray area
-        var desktop = _fixture.Automation.GetDesktop();
-        var taskbar = desktop.FindFirstDescendant(
-            _fixture.Automation.ConditionFactory.ByClassName("Shell_TrayWnd"));
+        // Act - open via the tray icon's context menu. FindTrayIcon opens the
+        // Windows 11 overflow flyout when the icon isn't on the taskbar itself,
+        // so this path is now always exercisable (it used to bail out silently).
+        var trayIcon = _fixture.FindTrayIcon();
+        if (trayIcon is null)
+            Assert.Fail("Could not locate the BeNGy tray icon, even in the overflow flyout.");
 
-        if (taskbar is null)
-        {
-            // Skip if tray not accessible in this environment
-            return;
-        }
+        trayIcon.RightClick();
+        Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Try to find notification area and the BeNGy tray icon
-        var notifyArea = taskbar.FindFirstDescendant(
-            _fixture.Automation.ConditionFactory.ByClassName("TrayNotifyWnd"));
-
-        // Right-click the tray icon to get context menu with "Open"
-        // Note: Tray interaction is environment-dependent; this is best-effort.
-        // Windows 11 hides new tray icons in the overflow flyout by default,
-        // so the icon is frequently not discoverable (the Epic1 tray tests
-        // document the same limitation).
-        var openInvoked = false;
-        if (notifyArea is not null)
-        {
-            var trayIcon = notifyArea.FindFirstDescendant(
-                _fixture.Automation.ConditionFactory.ByName("BeNGy"));
-            if (trayIcon is not null)
-            {
-                trayIcon.RightClick();
-                Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
-
-                // Look for "Open" menu item
-                var openItem = desktop.FindFirstDescendant(
-                    _fixture.Automation.ConditionFactory.ByName("Open"));
-                if (openItem is not null)
-                {
-                    openItem.Click();
-                    Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
-                    openInvoked = true;
-                }
-            }
-        }
-
-        if (!openInvoked)
-        {
-            // Environment cannot exercise the tray path. The window was hidden
-            // in Arrange, so summon it back and leave clean state for the next
-            // test, then bail without asserting a click that never happened.
-            _fixture.EnsureRunning();
-            return;
-        }
+        var openItem = _fixture.Automation.GetDesktop().FindFirstDescendant(
+            _fixture.Automation.ConditionFactory.ByName("Open"));
+        Assert.NotNull(openItem);
+        openItem.Click();
+        Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
         // Assert - window should be visible after tray open
-        var mainWindow = _fixture.GetMainWindow(TimeSpan.FromSeconds(3));
-        Assert.NotNull(mainWindow);
+        var shown = Retry.WhileFalse(_fixture.HasVisibleMainWindow, TimeSpan.FromSeconds(3), TimeSpan.FromMilliseconds(250));
+        Assert.True(shown.Result, "Tray 'Open' should show the main window.");
     }
 
     [Fact]

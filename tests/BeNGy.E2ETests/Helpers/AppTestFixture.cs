@@ -69,8 +69,8 @@ public class AppTestFixture : IDisposable
     ///
     /// BeNGy hides its window instead of closing it (auto-close after copy, Escape,
     /// close-to-tray), so "the process is alive" is not the same as "a test can drive
-    /// the UI". A hidden window reports Process.MainWindowHandle == IntPtr.Zero, which
-    /// is what every window lookup keys off.
+    /// the UI". Window lookups key off the main window's class and visibility (see
+    /// <see cref="GetMainWindow"/> for why not Process.MainWindowHandle).
     /// </summary>
     public Application EnsureRunning()
     {
@@ -82,24 +82,13 @@ public class AppTestFixture : IDisposable
     }
 
     /// <summary>
-    /// True when the app currently has a shown main window. A window hidden to the
-    /// tray reports no main window handle, which is the state this whole class has
-    /// to cope with.
+    /// True when the app's main window is currently shown (hidden to the tray is the
+    /// state this whole class has to cope with).
     /// </summary>
     public bool HasVisibleMainWindow()
     {
-        if (_app is null || _app.HasExited) return false;
-
-        try
-        {
-            using var process = Process.GetProcessById(_app.ProcessId);
-            process.Refresh();
-            return process.MainWindowHandle != IntPtr.Zero;
-        }
-        catch (ArgumentException)
-        {
-            return false;  // Process exited between the check and the lookup.
-        }
+        var handle = FindTopLevelWindowHandle();
+        return handle != IntPtr.Zero && IsWindowVisible(handle);
     }
 
     /// <summary>
@@ -235,7 +224,16 @@ public class AppTestFixture : IDisposable
     }
 
     /// <summary>
-    /// Waits for the main window whose title contains "BeNGy".
+    /// Waits for the app's main window to be shown and returns it.
+    ///
+    /// Located by window class, NOT Process.MainWindowHandle / FlaUI's
+    /// Application.GetMainWindow: WinAppSDK shows dropdowns and tooltips in their
+    /// own top-level windows (Microsoft.UI.Content.PopupWindowSiteBridge), and
+    /// MainWindowHandle happily returns one of those. Lookups then searched a
+    /// popup's tree instead of the app. That was the "Settings never opens"
+    /// failure (the page HAD opened; a "Back" tooltip had taken over the handle)
+    /// and the long-standing cascades after a test left a dropdown open (FlaUI's
+    /// ComboBox.Items expands and never collapses).
     /// </summary>
     public Window GetMainWindow(TimeSpan? timeout = null)
     {
@@ -244,17 +242,9 @@ public class AppTestFixture : IDisposable
         var window = Retry.WhileNull(
             () =>
             {
-                if (_app is null || _app.HasExited) return null;
-
-                // The inner wait MUST be bounded. FlaUI's parameterless overload defaults
-                // waitTimeout to TimeSpan.FromMilliseconds(-1) -- infinite -- and blocks
-                // inside this lambda while Process.MainWindowHandle is zero, which it is
-                // whenever the window is hidden to the tray. The outer Retry's timeout is
-                // never evaluated while the lambda is blocked, so the call below is the
-                // only thing bounding this method.
-                var win = _app.GetMainWindow(Automation, TimeSpan.FromMilliseconds(250));
-                return win?.Title?.Contains("BeNGy", StringComparison.OrdinalIgnoreCase) == true
-                    ? win
+                var handle = FindTopLevelWindowHandle();
+                return handle != IntPtr.Zero && IsWindowVisible(handle)
+                    ? Automation.FromHandle(handle).AsWindow()
                     : null;
             },
             effectiveTimeout,
@@ -262,7 +252,7 @@ public class AppTestFixture : IDisposable
 
         return window.Result
                ?? throw new TimeoutException(
-                   $"Main window with title containing 'BeNGy' did not appear within {effectiveTimeout.TotalSeconds}s.");
+                   $"The BeNGy main window was not shown within {effectiveTimeout.TotalSeconds}s.");
     }
 
     /// <summary>
@@ -341,18 +331,255 @@ public class AppTestFixture : IDisposable
         Keyboard.Type(text);
     }
 
+    // ── Per-test reset ──────────────────────────────────────────────
+    // The suite shares ONE app instance, so without a reset every test inherits
+    // whatever the previous one left behind. That, not randomness, was behind
+    // the long-standing "known failures": a test that ended on the Settings page
+    // made the next one time out looking for the form; a ticket left invalid
+    // ("PROJ 123") kept the warning up; a leftover prefix broke "feature/..."
+    // assertions; a dropdown left open hid the window's elements.
+
+    /// <summary>The prefix every test starts from (the app's out-of-the-box default).</summary>
+    public const string BaselinePrefix = "feature";
+
     /// <summary>
-    /// Empties the ticket and title fields. The suite shares one app instance and
-    /// the form is never reset between tests, so a field an earlier test left
-    /// invalid (e.g. "PROJ 123" in the ticket) keeps the validation warning up no
-    /// matter what the next test types into the other field.
+    /// Puts the app into one known state: running, window shown, no dropdown
+    /// open, main page, empty form, <see cref="BaselinePrefix"/> selected. Called
+    /// from every test class constructor (xUnit builds a new instance per test).
+    /// </summary>
+    public void ResetForTest()
+    {
+        EnsureRunning();
+        var window = GetMainWindow();
+        CollapseOpenDropdowns(window);
+
+        if (!ReturnToMainPage(window))
+        {
+            // Somewhere we can't navigate out of: a relaunch is the reliable reset.
+            LaunchApp();
+            WaitForElement(GetMainWindow(TimeSpan.FromSeconds(10)), AutomationIds.TicketEntry, TimeSpan.FromSeconds(15));
+        }
+
+        window = GetMainWindow();
+        ClearMainForm(window);
+        SelectComboItem(WaitForElement(window, AutomationIds.PrefixPicker), BaselinePrefix);
+    }
+
+    /// <summary>
+    /// Empties the ticket and title fields through the value pattern, without
+    /// moving keyboard focus (focus is itself under test in some tests).
     /// </summary>
     public void ClearMainForm(Window window)
     {
-        TypeText(WaitForElement(window, AutomationIds.TicketEntry), string.Empty);
-        TypeText(WaitForElement(window, AutomationIds.TitleEntry), string.Empty);
+        foreach (var id in new[] { AutomationIds.TicketEntry, AutomationIds.TitleEntry })
+        {
+            var field = WaitForElement(window, id);
+            if (!string.IsNullOrEmpty(field.AsTextBox().Text))
+                field.Patterns.Value.Pattern.SetValue(string.Empty);
+        }
+        Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(200));
+    }
+
+    /// <summary>
+    /// Selects a combo box item by text and guarantees the dropdown is closed
+    /// afterwards. A WinUI dropdown left open made the next lookups in the window
+    /// fail, which is how one test used to take down every test after it.
+    /// </summary>
+    public void SelectComboItem(AutomationElement comboElement, string itemText)
+    {
+        var combo = comboElement.AsComboBox();
+        if (string.Equals(combo.SelectedItem?.Text, itemText, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        combo.Expand();
+        Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(300));
+        var item = Retry.WhileNull(
+                () => combo.Items.FirstOrDefault(i => string.Equals(i.Text, itemText, StringComparison.OrdinalIgnoreCase)),
+                TimeSpan.FromSeconds(3),
+                TimeSpan.FromMilliseconds(200)).Result
+            ?? throw new InvalidOperationException($"No item '{itemText}' in combo '{comboElement.AutomationId}'.");
+        item.Select();
+
+        if (combo.ExpandCollapseState == FlaUI.Core.Definitions.ExpandCollapseState.Expanded)
+            combo.Collapse();
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(300));
     }
+
+    private void CollapseOpenDropdowns(Window window)
+    {
+        foreach (var element in window.FindAllDescendants(
+                     Automation.ConditionFactory.ByControlType(FlaUI.Core.Definitions.ControlType.ComboBox)))
+        {
+            var expandCollapse = element.Patterns.ExpandCollapse.PatternOrDefault;
+            if (expandCollapse?.ExpandCollapseState.ValueOrDefault == FlaUI.Core.Definitions.ExpandCollapseState.Expanded)
+                expandCollapse.Collapse();
+        }
+    }
+
+    /// <summary>
+    /// True when the main page's form is showing, navigating back from Settings
+    /// first if needed. Navigation is polled rather than slept on: the first
+    /// page transition in a fresh Debug build can take seconds (JIT).
+    /// </summary>
+    private bool ReturnToMainPage(Window window)
+    {
+        if (FindByAutomationId(window, AutomationIds.TicketEntry) is not null)
+            return true;
+
+        var done = FindByAutomationId(window, AutomationIds.DoneButton);
+        if (done is null)
+            return false;
+
+        done.AsButton().Invoke();
+        return Retry.WhileNull(
+            () => FindByAutomationId(GetMainWindow(), AutomationIds.TicketEntry),
+            TimeSpan.FromSeconds(15),
+            TimeSpan.FromMilliseconds(250)).Result is not null;
+    }
+
+    // ── Failure diagnostics ─────────────────────────────────────────
+
+    /// <summary>
+    /// Saves what the app looks like right now, a window screenshot plus an outline
+    /// of its top-level windows and UI Automation elements, into BENGY_DIAG_DIR (the
+    /// sandbox launcher points it at the mapped, writable results folder; the test
+    /// host's working directory is the read-only mapped bin folder there), falling
+    /// back to %TEMP%. For failures that only reproduce inside the VM, where nobody
+    /// can look. Never throws: it runs on failure paths and must not mask the real
+    /// error.
+    /// </summary>
+    public void CaptureDiagnostics(string label)
+    {
+        var dir = Environment.GetEnvironmentVariable("BENGY_DIAG_DIR")
+                  ?? Path.Combine(Path.GetTempPath(), "bengy-e2e-diag");
+        var stem = Path.Combine(dir, $"{DateTime.Now:HHmmss}-{label}");
+        var lines = new List<string>();
+        try
+        {
+            Directory.CreateDirectory(dir);
+            if (_app is null || _app.HasExited)
+            {
+                lines.Add("app not running");
+                return;
+            }
+
+            var pid = (uint)_app.ProcessId;
+            EnumWindows((handle, _) =>
+            {
+                GetWindowThreadProcessId(handle, out var owner);
+                if (owner != pid) return true;
+                var className = new System.Text.StringBuilder(256);
+                GetClassName(handle, className, className.Capacity);
+                GetWindowRect(handle, out var rect);
+                lines.Add($"window 0x{handle.ToInt64():X} class={className} visible={IsWindowVisible(handle)} " +
+                          $"rect=({rect.Left},{rect.Top})-({rect.Right},{rect.Bottom})");
+                return true;
+            }, IntPtr.Zero);
+
+            // Hover vs keyboard focus: which one opened a stray popup (tooltip)?
+            GetCursorPos(out var cursor);
+            lines.Add($"cursor=({cursor.X},{cursor.Y})");
+            try
+            {
+                var focused = Automation.FocusedElement();
+                lines.Add($"focused: {focused?.ControlType} id={focused?.Properties.AutomationId.ValueOrDefault} " +
+                          $"name={focused?.Properties.Name.ValueOrDefault} class={focused?.Properties.ClassName.ValueOrDefault}");
+            }
+            catch (Exception ex)
+            {
+                lines.Add("focused: unavailable (" + ex.Message + ")");
+            }
+
+            // The real main window by class (MainWindowHandle may be a popup; the
+            // window list above shows any popups separately).
+            var handle = FindTopLevelWindowHandle();
+            if (handle == IntPtr.Zero)
+            {
+                lines.Add("no main window");
+                return;
+            }
+            var window = Automation.FromHandle(handle).AsWindow();
+
+            foreach (var e in window.FindAllDescendants())
+            {
+                var expand = e.Patterns.ExpandCollapse.PatternOrDefault?.ExpandCollapseState.ValueOrDefault;
+                lines.Add($"{e.ControlType} id={e.Properties.AutomationId.ValueOrDefault} " +
+                          $"name={e.Properties.Name.ValueOrDefault} offscreen={e.Properties.IsOffscreen.ValueOrDefault}" +
+                          (expand is null ? string.Empty : $" expand={expand}"));
+            }
+            FlaUI.Core.Capturing.Capture.Element(window).ToFile(stem + ".png");
+        }
+        catch (Exception ex)
+        {
+            lines.Add("diagnostics incomplete: " + ex.Message);
+        }
+        finally
+        {
+            // Any exception type: an unwritable folder surfaces as
+            // UnauthorizedAccessException, not IOException, and once replaced
+            // the real failure this method exists to explain.
+            try { File.WriteAllLines(stem + ".txt", lines); }
+            catch (Exception) { /* nowhere left to report to */ }
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct NativeRect { public int Left, Top, Right, Bottom; }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct NativePoint { public int X, Y; }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hWnd, out NativeRect rect);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out NativePoint point);
+
+    // ── Tray icon ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Finds BeNGy's notification-area icon. Windows 11 puts new icons in the
+    /// "Show Hidden Icons" overflow flyout by default, which is why a plain
+    /// desktop search never found it; this opens the flyout when needed.
+    /// Taskbar identifiers (verified on this Windows build): the chevron is a
+    /// Button with AutomationId "SystemTrayIcon" named "Show Hidden Icons";
+    /// every app icon is AutomationId "NotifyItemIcon" named after its tooltip,
+    /// sometimes with a leading space.
+    /// </summary>
+    public AutomationElement? FindTrayIcon(TimeSpan? timeout = null)
+    {
+        var desktop = Automation.GetDesktop();
+        var cf = Automation.ConditionFactory;
+
+        return Retry.WhileNull(
+            () =>
+            {
+                var icon = FindBengyNotifyIcon(desktop);
+                if (icon is not null) return icon;
+
+                var chevron = desktop
+                    .FindFirstChild(cf.ByClassName("Shell_TrayWnd"))
+                    ?.FindFirstDescendant(cf.ByAutomationId("SystemTrayIcon").And(cf.ByName("Show Hidden Icons")));
+                if (chevron is null) return null;
+
+                chevron.AsButton().Invoke();
+                Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(700));
+                return FindBengyNotifyIcon(desktop);
+            },
+            timeout ?? TimeSpan.FromSeconds(10),
+            TimeSpan.FromMilliseconds(500)).Result;
+    }
+
+    private AutomationElement? FindBengyNotifyIcon(AutomationElement desktop) =>
+        desktop.FindAllDescendants(Automation.ConditionFactory.ByAutomationId("NotifyItemIcon"))
+            .FirstOrDefault(e => (e.Properties.Name.ValueOrDefault ?? string.Empty).Trim()
+                .StartsWith("BeNGy", StringComparison.Ordinal));
 
     /// <summary>
     /// Reads the current clipboard text content using Win32 APIs.
@@ -441,24 +668,8 @@ public class AppTestFixture : IDisposable
     {
         var effectiveTimeout = timeout ?? DefaultTimeout;
 
-        var result = Retry.WhileTrue(
-            () =>
-            {
-                try
-                {
-                    if (_app is null || _app.HasExited) return false;
-                    var win = _app.GetMainWindow(Automation, TimeSpan.FromMilliseconds(500));
-                    return win is not null && !win.IsOffscreen;
-                }
-                catch
-                {
-                    return false;
-                }
-            },
-            effectiveTimeout,
-            TimeSpan.FromMilliseconds(250));
-
-        return result.Result;
+        Retry.WhileTrue(HasVisibleMainWindow, effectiveTimeout, TimeSpan.FromMilliseconds(250));
+        return !HasVisibleMainWindow();
     }
 
     public void Dispose()
