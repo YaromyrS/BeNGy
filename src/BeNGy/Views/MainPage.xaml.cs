@@ -22,6 +22,19 @@ public partial class MainPage : ContentPage
 		// changes (validation warning appears, wraps to more lines, or goes
 		// away), fit the window to it.
 		ContentRoot.SizeChanged += (_, _) => UpdateSurface();
+
+		// Every summon starts in the ticket field (NFR12). OnAppearing only covers
+		// the page appearing; re-showing a hidden window let WinUI restore focus to
+		// wherever it was, e.g. the title field after copy-and-auto-close, so the
+		// next ticket number got typed into the title.
+		if (_windowService is not null)
+		{
+			_windowService.Shown += (_, _) =>
+			{
+				if (_isCurrentPage)
+					Dispatcher.Dispatch(() => TicketEntry.Focus());
+			};
+		}
 	}
 
 	private void UpdateSurface()

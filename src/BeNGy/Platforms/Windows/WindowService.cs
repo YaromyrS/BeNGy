@@ -56,6 +56,8 @@ public class WindowService : IWindowService
 
     public bool IsVisible { get; private set; } = true;
 
+    public event EventHandler? Shown;
+
     /// <summary>
     /// Binds this service to the native WinUI window. Must be called once after the window is created.
     /// </summary>
@@ -466,6 +468,10 @@ public class WindowService : IWindowService
     {
         if (_nativeWindow == null || _appWindow == null) return;
 
+        // The real window state, not IsVisible: the window can be hidden without
+        // going through HideWindow (and IsVisible starts out true).
+        var wasHidden = !_appWindow.IsVisible;
+
         TrySubclassBridge();   // no-op once bound; covers bridge created after Initialize
         _appWindow.Show();
 
@@ -478,6 +484,9 @@ public class WindowService : IWindowService
 
         // Ensure foreground
         NativeMethods.SetForegroundWindow(hwnd);
+
+        if (wasHidden)
+            Shown?.Invoke(this, EventArgs.Empty);
     }
 
     public void HideWindow()

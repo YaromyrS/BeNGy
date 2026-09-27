@@ -34,6 +34,13 @@ public interface IWindowService
     bool IsVisible { get; }
 
     /// <summary>
+    /// Raised by <see cref="ShowWindow"/> when the window goes from hidden to shown
+    /// (hotkey, tray Open, second-instance activation). Not raised for focus
+    /// changes such as alt-tabbing back to an already visible window.
+    /// </summary>
+    event EventHandler? Shown;
+
+    /// <summary>
     /// Centers the window on the primary monitor work area.
     /// </summary>
     void CenterOnScreen();
