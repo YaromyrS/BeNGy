@@ -2,11 +2,13 @@
 
 All notable changes to BeNGy will be documented in this file.
 
-## [Unreleased]
+## [1.1.0] - 2026-11-11
 
 ### Added
 
 - **Ctrl+C copies the branch name**: It keeps BeNGy open and the form filled, unlike Enter or the Copy button. With text selected in a field, Ctrl+C copies that selection as usual.
+- **Installers**: `BeNGy-Setup-x64.exe` and `BeNGy-x64.msi` install per user to `%LocalAppData%\Programs\BeNGy` without an admin prompt. A portable zip is also available.
+- **Microsoft Store packaging**: An MSIX build where "Start with Windows" uses a Windows startup task. Turning BeNGy off in Task Manager's startup apps is respected.
 
 ### Changed
 
