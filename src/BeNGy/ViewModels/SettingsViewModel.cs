@@ -1,4 +1,4 @@
-using BeNGy.Helpers;
+﻿using BeNGy.Helpers;
 using BeNGy.Models;
 using BeNGy.Services.Interfaces;
 
@@ -28,6 +28,7 @@ public partial class SettingsViewModel : BaseViewModel
         _startupService = startupService;
 
         // Load saved values
+        AvailablePrefixes = new ObservableCollection<string>(Services.PrefixCatalog.Load(_preferences));
         _defaultPrefix = _preferences.Get(PreferenceKeys.DefaultPrefix, PreferenceKeys.DefaultPrefixValue);
         _selectedThemeString = _themeService.CurrentTheme.ToString();
         _startWithWindows = _startupService?.IsStartWithWindows ?? false;
@@ -42,10 +43,7 @@ public partial class SettingsViewModel : BaseViewModel
         _hotkeyDisplay = BeNGy.Helpers.HotkeyFormattingHelper.FormatHotkey(mods, key);
 
         // Story M2: If hotkey failed during startup, show error in VM immediately
-        if (_hotkeyService != null && !_hotkeyService.IsRegistered)
-        {
-            HotkeyError = "Global hotkey is currently unavailable. It may be in use by another application.";
-        }
+        HotkeyError = RegistrationStatusMessage();
 
         // Formatting
         _selectedTitleFormat = _preferences.Get(PreferenceKeys.TitleFormat, PreferenceKeys.TitleFormatDefault);
@@ -55,12 +53,9 @@ public partial class SettingsViewModel : BaseViewModel
         UpdateDelayLabel();
     }
 
-    // ── Story 6.2: Default Prefix ─────────────────────────────────
+    // ── Story 6.2: Default Prefix + user-managed prefix catalog ───
 
-    public ObservableCollection<string> AvailablePrefixes { get; } = new()
-    {
-        "feature", "bugfix", "hotfix", "release"
-    };
+    public ObservableCollection<string> AvailablePrefixes { get; }
 
     [ObservableProperty]
     private string _defaultPrefix;
@@ -68,6 +63,52 @@ public partial class SettingsViewModel : BaseViewModel
     partial void OnDefaultPrefixChanged(string value)
     {
         _preferences.Set(PreferenceKeys.DefaultPrefix, value);
+    }
+
+    [ObservableProperty]
+    private string _newPrefix = string.Empty;
+
+    /// <summary>Prefix manager is collapsed by default; a chevron row expands it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PrefixChevron))]
+    private bool _isPrefixListExpanded;
+
+    /// <summary>Chevron glyph for the prefixes row: down = collapsed, up = expanded.</summary>
+    public string PrefixChevron => IsPrefixListExpanded ? "" : "";
+
+    [RelayCommand]
+    private void TogglePrefixList() => IsPrefixListExpanded = !IsPrefixListExpanded;
+
+    /// <summary>
+    /// Adds the typed prefix to the catalog. Rejects empties and duplicates;
+    /// git-rule validation happens naturally in the branch preview.
+    /// </summary>
+    [RelayCommand]
+    private void AddPrefix()
+    {
+        var candidate = NewPrefix.Trim();
+        if (candidate.Length == 0 || AvailablePrefixes.Contains(candidate))
+            return;
+
+        AvailablePrefixes.Add(candidate);
+        Services.PrefixCatalog.Save(_preferences, AvailablePrefixes);
+        NewPrefix = string.Empty;
+    }
+
+    /// <summary>
+    /// Removes a prefix from the catalog. The last remaining prefix cannot be
+    /// removed; removing the current default reassigns it to the first entry.
+    /// </summary>
+    [RelayCommand]
+    private void RemovePrefix(string prefix)
+    {
+        if (AvailablePrefixes.Count <= 1) return;
+        if (!AvailablePrefixes.Remove(prefix)) return;
+
+        Services.PrefixCatalog.Save(_preferences, AvailablePrefixes);
+
+        if (DefaultPrefix == prefix)
+            DefaultPrefix = AvailablePrefixes[0];
     }
 
     // ── Story 6.3: Hotkey Configuration ───────────────────────────
@@ -85,6 +126,21 @@ public partial class SettingsViewModel : BaseViewModel
     private string _changeButtonText = "Change";
 
     /// <summary>
+    /// Re-reads state that can change outside the app (the Run key behind
+    /// "Start with Windows"). The page is reused across opens, so its view model
+    /// no longer starts fresh each time.
+    /// </summary>
+    public void RefreshExternalState()
+    {
+        StartWithWindows = _startupService?.IsStartWithWindows ?? false;
+    }
+
+    private string RegistrationStatusMessage() =>
+        _hotkeyService is { IsRegistered: false }
+            ? "Global hotkey is currently unavailable. It may be in use by another application."
+            : string.Empty;
+
+    /// <summary>
     /// Toggles the hotkey capture mode.
     /// </summary>
     [RelayCommand]
@@ -92,19 +148,41 @@ public partial class SettingsViewModel : BaseViewModel
     {
         if (IsCapturingHotkey)
         {
-            // Cancel capture
-            IsCapturingHotkey = false;
-            ChangeButtonText = "Change";
-            HotkeyError = string.Empty;
+            CancelHotkeyCapture();
+            return;
         }
-        else
-        {
-            // Start capture
-            IsCapturingHotkey = true;
-            ChangeButtonText = "Cancel";
-            HotkeyError = "Press the new hotkey combination...";
-        }
+
+        IsCapturingHotkey = true;
+        ChangeButtonText = "Cancel";
+        HotkeyError = string.Empty;   // the view shows the capture prompt itself
+
+        // The CURRENT hotkey never reaches the page's key handler: the global
+        // registration swallows it and raises HotkeyPressed instead. Pressing
+        // it while capturing means "keep what I have", so it cancels.
+        if (_hotkeyService is not null)
+            _hotkeyService.HotkeyPressed += OnHotkeyPressedWhileCapturing;
     }
+
+    /// <summary>
+    /// Leaves capture mode without changing the hotkey. Safe to call when not
+    /// capturing (the page calls it on leaving Settings).
+    /// </summary>
+    public void CancelHotkeyCapture()
+    {
+        if (!IsCapturingHotkey) return;
+        EndHotkeyCapture();
+        HotkeyError = RegistrationStatusMessage();
+    }
+
+    private void EndHotkeyCapture()
+    {
+        IsCapturingHotkey = false;
+        ChangeButtonText = "Change";
+        if (_hotkeyService is not null)
+            _hotkeyService.HotkeyPressed -= OnHotkeyPressedWhileCapturing;
+    }
+
+    private void OnHotkeyPressedWhileCapturing(object? sender, EventArgs e) => CancelHotkeyCapture();
 
     /// <summary>
     /// Processes a key down event from the view during capture mode.
@@ -114,6 +192,15 @@ public partial class SettingsViewModel : BaseViewModel
     {
         if (!IsCapturingHotkey || e is not (HotkeyModifiers mods, HotkeyKey key))
             return;
+
+        // Esc cancels. (The current combination cancels via HotkeyPressed while it
+        // is registered; if it reaches us here it is NOT registered, and pressing
+        // it again is a retry, so it falls through to registration.)
+        if (mods == HotkeyModifiers.None && key == HotkeyKey.Escape)
+        {
+            CancelHotkeyCapture();
+            return;
+        }
 
         // Validation: Must have at least one modifier
         if (mods == HotkeyModifiers.None)
@@ -133,8 +220,7 @@ public partial class SettingsViewModel : BaseViewModel
             
             // Update UI
             HotkeyDisplay = BeNGy.Helpers.HotkeyFormattingHelper.FormatHotkey(mods, key);
-            IsCapturingHotkey = false;
-            ChangeButtonText = "Change";
+            EndHotkeyCapture();
             HotkeyError = string.Empty;
         }
         else
@@ -194,6 +280,11 @@ public partial class SettingsViewModel : BaseViewModel
     partial void OnStartWithWindowsChanged(bool value)
     {
         _startupService?.SetStartWithWindows(value);
+
+        // Windows can refuse (Store build: the user turned BeNGy off in Task
+        // Manager's startup apps, which only they can undo). Show what is real.
+        if (_startupService is not null && _startupService.IsStartWithWindows != value)
+            StartWithWindows = _startupService.IsStartWithWindows;
     }
 
     // ── Story 6.6: Start Minimized ────────────────────────────────

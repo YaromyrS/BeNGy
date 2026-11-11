@@ -23,7 +23,7 @@ public class LayoutFitTests
     {
         _fixture = fixture;
         _output = output;
-        _fixture.EnsureRunning();
+        _fixture.ResetForTest();
     }
 
     [Fact]
@@ -81,20 +81,22 @@ public class LayoutFitTests
 
         var windowBounds = window.BoundingRectangle;
         var copyButton = _fixture.WaitForElement(window, AutomationIds.CopyButton);
-        var blockedHint = _fixture.WaitForElement(window, AutomationIds.CopyBlockedLabel);
+        // Bottom-most element of the invalid state is the warning message inside
+        // the InfoBar (its only text since the duplicate characters row went).
+        var warning = _fixture.WaitForElement(window, AutomationIds.ValidationMessageLabel);
 
-        _output.WriteLine($"window:      {windowBounds}");
-        _output.WriteLine($"copyButton:  {copyButton.BoundingRectangle}");
-        _output.WriteLine($"blockedHint: {blockedHint.BoundingRectangle} offscreen={blockedHint.IsOffscreen}");
+        _output.WriteLine($"window:     {windowBounds}");
+        _output.WriteLine($"copyButton: {copyButton.BoundingRectangle}");
+        _output.WriteLine($"warning:    {warning.BoundingRectangle} offscreen={warning.IsOffscreen}");
 
         Assert.True(
             copyButton.BoundingRectangle.Bottom <= windowBounds.Bottom,
             $"Copy button is clipped by {copyButton.BoundingRectangle.Bottom - windowBounds.Bottom}px in the invalid state.");
 
-        Assert.False(blockedHint.IsOffscreen, "The 'fix validation issues' hint is not visible.");
+        Assert.False(warning.IsOffscreen, "The validation warning is not visible.");
         Assert.True(
-            blockedHint.BoundingRectangle.Bottom <= windowBounds.Bottom,
-            $"Validation hint is clipped by {blockedHint.BoundingRectangle.Bottom - windowBounds.Bottom}px.");
+            warning.BoundingRectangle.Bottom <= windowBounds.Bottom,
+            $"InfoBar content is clipped by {warning.BoundingRectangle.Bottom - windowBounds.Bottom}px.");
     }
 
     [Fact]

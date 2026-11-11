@@ -20,6 +20,36 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool SetForegroundWindow(IntPtr hWnd);
 
+    // ── Palette window: DPI, header drag ──────────────────────────
+
+    internal const uint WM_DPICHANGED = 0x02E0;
+
+    [DllImport("user32.dll")]
+    internal static extern uint GetDpiForWindow(IntPtr hWnd);
+
+    internal const uint SWP_NOSIZE = 0x0001;
+    internal const uint SWP_NOZORDER = 0x0004;
+    internal const uint SWP_NOACTIVATE = 0x0010;
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct POINT { public int X; public int Y; }
+
+    /// <summary>Cursor position in physical screen pixels (the process is per-monitor DPI aware).</summary>
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool GetCursorPos(out POINT point);
+
     // ── Global hotkey (Epic 5) ────────────────────────────────────
 
     [DllImport("user32.dll", SetLastError = true)]

@@ -1,0 +1,24 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <!-- Per-user MSI around a folder publish of the app. Built by
+       tools/packaging/build-release.ps1, which passes PublishDir and Version. -->
+  <PropertyGroup>
+    <OutputName>BeNGy-x64</OutputName>
+    <OutputType>Package</OutputType>
+    <Platform>x64</Platform>
+    <Version Condition="'$(Version)' == ''">0.0.0</Version>
+    <DefineConstants>PublishDir=$(PublishDir);Version=$(Version)</DefineConstants>
+    <!-- Per-user installs into the user profile: these ICEs demand HKCU key
+         paths for every file component, which a harvested app folder cannot
+         have. Standard to suppress for per-user packages. -->
+    <!-- ICE03/ICE60: several WinAppSDK DLLs carry invalid or multi-language
+         ids in their version resources; MSI installs them fine. -->
+    <SuppressIces>ICE03;ICE38;ICE60;ICE64;ICE91</SuppressIces>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- Both installer projects share this folder: no default *.wxs globbing. -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Package.wxs" />
+  </ItemGroup>
+</Project>

@@ -7,18 +7,28 @@ namespace BeNGy.Views;
 public partial class SettingsPage : ContentPage
 {
     private readonly SettingsViewModel _viewModel;
+    private readonly IWindowService? _windowService;
 
-    public SettingsPage(SettingsViewModel viewModel)
+    public SettingsPage(SettingsViewModel viewModel, IWindowService? windowService = null)
     {
         InitializeComponent();
         _viewModel = viewModel;
+        _windowService = windowService;
         BindingContext = viewModel;
+    }
+
+    private async void OnCloseClicked(object sender, EventArgs e)
+    {
+        // Hide to tray; pop first so the next summon starts on the main form.
+        await Navigation.PopAsync(animated: false);
+        _windowService?.HideWindow();
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        
+        _viewModel.RefreshExternalState();
+
 #if WINDOWS
         var mauiWindow = Window?.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
         if (mauiWindow != null)
@@ -31,7 +41,11 @@ public partial class SettingsPage : ContentPage
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
-        
+
+        // Leaving Settings (back, or close-to-tray, which pops first) must not
+        // leave capture armed.
+        _viewModel.CancelHotkeyCapture();
+
 #if WINDOWS
         var mauiWindow = Window?.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
         if (mauiWindow != null)
@@ -84,6 +98,8 @@ public partial class SettingsPage : ContentPage
 
     private async void OnDoneClicked(object sender, EventArgs e)
     {
-        await Navigation.PopAsync();
+        // No slide animation — the palette snaps between surfaces.
+        await Navigation.PopAsync(animated: false);
     }
+
 }

@@ -57,23 +57,24 @@ Or, after building, run the compiled executable from `src/BeNGy/bin/Debug/net8.0
 
 ## Publishing
 
-Publish a self-contained single-file executable:
+Release builds come from one script:
 
 ```
-dotnet publish src/BeNGy/BeNGy.csproj -c Release
+powershell -File tools\packaging\build-release.ps1        # Setup.exe, MSI, portable zip
+powershell -File tools\packaging\build-release.ps1 -Msix  # ...plus the Microsoft Store package
 ```
 
-The project is preconfigured (`PublishSingleFile`, `SelfContained`, `IncludeNativeLibrariesForSelfExtract`) so the output is a standalone `.exe` that requires no separate .NET runtime installation. Published output lands in:
+It publishes a self-contained, ReadyToRun folder build of the app and wraps it
+into `BeNGy-Setup-x64.exe` (WiX bundle), `BeNGy-x64.msi` (per-user, installs to
+`%LocalAppData%\Programs\BeNGy`, no admin prompt) and `BeNGy-x64-portable.zip`,
+all under `artifacts\<version>\`. The installers use the WiX Toolset 5 MSBuild
+SDK (`installer\`), which NuGet restores. Nothing needs to be installed first.
 
-```
-src/BeNGy/bin/Release/net8.0-windows10.0.19041.0/win-x64/publish/
-```
+The Store build is the same app packaged as MSIX. The release process and the
+Microsoft Store checklist are in [docs/store-release.md](docs/store-release.md).
 
-To target ARM64 instead:
-
-```
-dotnet publish src/BeNGy/BeNGy.csproj -c Release -r win-arm64
-```
+Publishing as a single-file exe is not supported: it crashed at start
+(`DllNotFoundException` in `Program.Main`), and MSIX can't use it either.
 
 ## Running Tests
 

@@ -1,7 +1,6 @@
 using BeNGy.E2ETests.Helpers;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Input;
-using FlaUI.Core.Tools;
 using FlaUI.Core.WindowsAPI;
 
 namespace BeNGy.E2ETests.Tests;
@@ -15,7 +14,7 @@ public class Epic4_ClipboardTests
     public Epic4_ClipboardTests(AppTestFixture fixture)
     {
         _fixture = fixture;
-        _fixture.EnsureRunning();
+        _fixture.ResetForTest();
     }
 
     private Window LaunchAndGetWindow()
@@ -55,17 +54,16 @@ public class Epic4_ClipboardTests
     }
 
     [Fact]
-    public void CopyButton_Default_ShowsCopyText() // FR14
+    public void CopyButton_Default_IsPresentAndAnnouncesCopy() // FR14
     {
-        // Arrange
+        // The copy action is now a glyph button inside the preview card; its
+        // UIA name comes from SemanticProperties ("Copy branch name to
+        // clipboard"), not from visible text.
         var window = LaunchAndGetWindow();
 
-        // Act
         var copyButton = _fixture.WaitForElement(window, AutomationIds.CopyButton);
 
-        // Assert
-        var buttonText = copyButton.AsButton().Name;
-        Assert.Contains("Copy", buttonText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Copy", copyButton.AsButton().Name, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -120,26 +118,9 @@ public class Epic4_ClipboardTests
         copyButton.AsButton().Invoke();
         _fixture.WaitForWindowClose(TimeSpan.FromSeconds(5));
 
-        // Re-show the window (simulate tray open or hotkey)
-        // Since the app is still running, we look for the tray icon to re-open
-        var desktop = _fixture.Automation.GetDesktop();
-        var notifyIcon = Retry.WhileNull(
-            () =>
-            {
-                var candidates = desktop.FindAllDescendants(
-                    _fixture.Automation.ConditionFactory.ByName("BeNGy"));
-                return candidates.FirstOrDefault();
-            },
-            TimeSpan.FromSeconds(5),
-            TimeSpan.FromMilliseconds(500));
-
-        if (notifyIcon.Result is not null)
-        {
-            notifyIcon.Result.DoubleClick();
-            Wait.UntilInputIsProcessed(TimeSpan.FromSeconds(1));
-        }
-
-        // Get the re-opened window
+        // Re-show the window the everyday way, via the global hotkey. (This test
+        // is about the form being cleared; the tray path has its own tests.)
+        _fixture.EnsureWindowVisible();
         var reopenedWindow = _fixture.GetMainWindow(TimeSpan.FromSeconds(5));
 
         // Assert — ticket and title should be cleared

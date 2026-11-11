@@ -1,6 +1,6 @@
 # PowerToys Palette Redesign Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Restyle BeNGy as a PowerToys-style launcher palette (borderless rounded acrylic window, Fluent tokens, settings cards) without changing behavior or breaking the E2E suite.
 
@@ -34,13 +34,13 @@
 **Interfaces:**
 - Produces: `tools/dev/capture-bengy.ps1 -Out <png>` — relaunches the Debug BeNGy.exe, summons it (handles start-minimized), screenshots the window. Every later task's visual check uses this.
 
-- [ ] **Step 1: Create the branch**
+- [x] **Step 1: Create the branch**
 
 ```bash
 git -C D:/projects/bengy checkout -b redesign/powertoys-palette
 ```
 
-- [ ] **Step 2: Write the helper**
+- [x] **Step 2: Write the helper**
 
 Create `tools/dev/capture-bengy.ps1`:
 
@@ -92,12 +92,12 @@ $g.Dispose(); $bmp.Save($Out, [System.Drawing.Imaging.ImageFormat]::Png); $bmp.D
 "captured ${w}x${h} -> $Out"
 ```
 
-- [ ] **Step 3: Verify it works against the current build**
+- [x] **Step 3: Verify it works against the current build**
 
 Run: `powershell -ExecutionPolicy Bypass -File tools/dev/capture-bengy.ps1 -Out $env:TEMP\bengy-baseline.png`
 Expected: `captured ...` and a PNG showing the current (pre-redesign) window. Keep this PNG as the before shot.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tools/dev/capture-bengy.ps1
@@ -114,7 +114,7 @@ git commit -m "chore: add dev screenshot helper for design iteration"
 **Interfaces:**
 - Produces resource keys consumed by Tasks 3–8: `Accent`, `AccentHover`, `AccentPressed`, `AccentForeground`, `TextPrimary`, `TextPrimaryDark`, `TextSecondary`, `TextSecondaryDark`, `CardBackground`, `CardBackgroundDark`, `CardStroke`, `CardStrokeDark`, `InputBackground`, `InputBackgroundDark`, `WarningBackground`, `WarningBackgroundDark`, `WarningText`, `WarningTextDark`, `SuccessText`, `SuccessTextDark`, `KeycapFill`, `KeycapFillDark`, `PageFallback`, `PageFallbackDark`.
 
-- [ ] **Step 1: Append the Fluent token block**
+- [x] **Step 1: Append the Fluent token block**
 
 Add before the closing `</ResourceDictionary>` of `Colors.xaml`:
 
@@ -154,12 +154,12 @@ Add before the closing `</ResourceDictionary>` of `Colors.xaml`:
 	<Color x:Key="PageFallbackDark">#202020</Color>
 ```
 
-- [ ] **Step 2: Build + unit tests**
+- [x] **Step 2: Build + unit tests**
 
 Run: `dotnet build D:/projects/bengy/BeNGy.sln -v minimal` then `dotnet test D:/projects/bengy/tests/BeNGy.Tests/BeNGy.Tests.csproj --no-build -v minimal`
 Expected: 0 errors; 205/205.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/BeNGy/Resources/Styles/Colors.xaml
@@ -177,7 +177,7 @@ git commit -m "feat(design): add Fluent color tokens with system-accent fallback
 **Interfaces:**
 - Produces: `static void SystemAccent.Apply(ResourceDictionary resources)` — overwrites `Accent`, `AccentHover`, `AccentPressed` with the user's Windows accent color. Silent no-op on failure (XAML fallbacks remain).
 
-- [ ] **Step 1: Write SystemAccent.cs**
+- [x] **Step 1: Write SystemAccent.cs**
 
 ```csharp
 using Windows.UI.ViewManagement;
@@ -215,7 +215,7 @@ public static class SystemAccent
 }
 ```
 
-- [ ] **Step 2: Wire it in App.xaml.cs**
+- [x] **Step 2: Wire it in App.xaml.cs**
 
 In the `App` constructor, immediately after `InitializeComponent();`:
 
@@ -225,12 +225,12 @@ In the `App` constructor, immediately after `InitializeComponent();`:
 #endif
 ```
 
-- [ ] **Step 3: Build + unit tests**
+- [x] **Step 3: Build + unit tests**
 
 Run: `dotnet build D:/projects/bengy/BeNGy.sln -v minimal` then `dotnet test D:/projects/bengy/tests/BeNGy.Tests/BeNGy.Tests.csproj --no-build -v minimal`
 Expected: 0 errors; 205/205 (unit project doesn't compile Platforms/Windows; the `#if WINDOWS` guard keeps App portable).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/BeNGy/Platforms/Windows/SystemAccent.cs src/BeNGy/App.xaml.cs
@@ -248,7 +248,7 @@ git commit -m "feat(design): use Windows system accent color"
 - Produces named styles consumed by Tasks 6–7: `PaletteTitle`, `Caption`, `SectionHeader`, `GlyphButton`, `AccentButton`, `PreviewCard`, `WarningInfoBar`, `SettingsCard`, `SettingsRowSeparator`, `KeycapChip`, `MonoText`.
 - Fonts used directly by name (no registration needed — system fonts): `Segoe UI Variable Text`, `Segoe Fluent Icons`, `Cascadia Mono`.
 
-- [ ] **Step 1: Replace the implicit control styles**
+- [x] **Step 1: Replace the implicit control styles**
 
 Replace the existing `<Style TargetType="Label">`, `Entry`, `Picker`, `Switch`, `Button`, `Border`, and `ApplyToDerivedTypes Page` styles with:
 
@@ -300,7 +300,7 @@ Replace the existing `<Style TargetType="Label">`, `Entry`, `Picker`, `Switch`, 
 	</Style>
 ```
 
-- [ ] **Step 2: Append the named styles**
+- [x] **Step 2: Append the named styles**
 
 ```xml
 	<!-- ── PowerToys palette styles ─────────────────────────────────── -->
@@ -404,13 +404,13 @@ Replace the existing `<Style TargetType="Label">`, `Entry`, `Picker`, `Switch`, 
 	</Style>
 ```
 
-- [ ] **Step 3: Build + unit tests + screenshot sanity**
+- [x] **Step 3: Build + unit tests + screenshot sanity**
 
 Run: `dotnet build D:/projects/bengy/BeNGy.sln -v minimal`, unit tests as before, then
 `powershell -ExecutionPolicy Bypass -File tools/dev/capture-bengy.ps1 -Out $env:TEMP\bengy-task4.png`
 Expected: builds clean, 205/205, app launches; typography/colors changed, layout still the old one (pages come later). A transparent-looking or oddly dark page background at this stage is EXPECTED (backdrop arrives in Task 5).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/BeNGy/Resources/Styles/Styles.xaml
@@ -430,7 +430,7 @@ git commit -m "feat(design): Fluent implicit styles and palette component styles
 - Produces: `IWindowService.SetPaletteSize(bool settings)` — resizes to 560×400 (main) / 560×620 (settings) and repositions. NSubstitute mocks in unit tests auto-stub the new member; no test edits needed.
 - Consumes: nothing new.
 
-- [ ] **Step 1: Add the interface member**
+- [x] **Step 1: Add the interface member**
 
 In `IWindowService.cs` add:
 
@@ -443,7 +443,7 @@ In `IWindowService.cs` add:
     void SetPaletteSize(bool settings);
 ```
 
-- [ ] **Step 2: Rework WindowService.Initialize + sizing**
+- [x] **Step 2: Rework WindowService.Initialize + sizing**
 
 In `WindowService.cs`: replace the constants and `Initialize` body; add `SetPaletteSize` and `PositionPalette`; make `ShowWindow` call `PositionPalette()` before activating. Keep `OnWindowClosing`, `HideWindow`, `IsVisible` logic as-is.
 
@@ -512,7 +512,7 @@ In `WindowService.cs`: replace the constants and `Initialize` body; add `SetPale
 
 Delete the old `WindowWidth`/`WindowHeight` constants, the old `Resize` call, and the old center-both-axes math (`WindowService.cs:80-81` area); `PositionPalette` replaces them.
 
-- [ ] **Step 3: Wire resize into navigation (App.xaml.cs)**
+- [x] **Step 3: Wire resize into navigation (App.xaml.cs)**
 
 In `CreateWindow`, after constructing the NavigationPage:
 
@@ -528,12 +528,12 @@ In `OpenSettings()`, before `PushAsync`:
 				_windowService?.SetPaletteSize(settings: true);
 ```
 
-- [ ] **Step 4: Build, unit tests, screenshot**
+- [x] **Step 4: Build, unit tests, screenshot**
 
 Build + 205/205 as before, then capture `$env:TEMP\bengy-task5.png`.
 Expected: borderless rounded floating window at upper-center, 560×400-ish. **Inspect the screenshot for the acrylic risk (spec §8):** if the content area is opaque white/black instead of showing backdrop material, note it and continue — Task 6 sets page backgrounds transparent; re-check then. If after Task 6 it is STILL opaque, fall back per spec: set page `BackgroundColor` to `{AppThemeBinding Light={StaticResource PageFallback}, Dark={StaticResource PageFallbackDark}}` and keep Mica/solid instead of acrylic.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/BeNGy/Platforms/Windows/WindowService.cs src/BeNGy/Services/Interfaces/IWindowService.cs src/BeNGy/App.xaml.cs
@@ -551,7 +551,7 @@ git commit -m "feat(design): borderless rounded acrylic palette window, Run-styl
 **Interfaces:**
 - Consumes: styles from Task 4, tokens from Task 2. Bindings unchanged: `PrefixOptions`, `Prefix`, `TicketNumber`, `Title`, `GeneratedBranchName`, `HasBranchName`, `IsValid`, `ValidationMessage`, `HasInvalidCharacters`, `InvalidCharactersDisplay`, `CopyButtonText`, `CopyCommand`, `CopySuccess` (no longer bound to button color — AccentButton VSM owns color now).
 
-- [ ] **Step 1: Replace MainPage.xaml**
+- [x] **Step 1: Replace MainPage.xaml**
 
 Everything between `<ContentPage ...>` and `</ContentPage>` becomes (attributes on the root: add `BackgroundColor="Transparent"` and `NavigationPage.HasNavigationBar="False"`; DELETE the `<ContentPage.ToolbarItems>` block — the gear button replaces it):
 
@@ -708,7 +708,7 @@ Everything between `<ContentPage ...>` and `</ContentPage>` becomes (attributes 
 
 Note: the old `Text="Prefix"` / `Text="Ticket / Issue #"` / `Text="Title / Description"` field labels are deliberately gone — palette idiom uses placeholders. `CopySuccess`/`CopySuccessColorConverter` binding on the button is dropped (AccentButton VSM owns background); the converter class stays (unit-tested), just unused by this page. Spec deviation, accepted: the "subtle ↵ hint" on the Copy button is omitted — `CopyButtonText` is dynamic ("Copy" → "Copied! ✓"), and a composite glyph+text button would break that binding; `ReturnType="Done"` on the title entry keeps Enter-to-copy discoverable.
 
-- [ ] **Step 2: Entrance animation in MainPage.xaml.cs**
+- [x] **Step 2: Entrance animation in MainPage.xaml.cs**
 
 Replace the fade block at `OnAppearing` (currently `this.Opacity = 0; this.FadeTo(1, 250, ...)`) with:
 
@@ -725,12 +725,12 @@ Replace the fade block at `OnAppearing` (currently `this.Opacity = 0; this.FadeT
 
 Everything else in the code-behind stays (Escape handler, `TicketEntry.Focus()`, `TicketEntry.Completed`).
 
-- [ ] **Step 3: Build, unit tests, screenshots (empty + valid + invalid)**
+- [x] **Step 3: Build, unit tests, screenshots (empty + valid + invalid)**
 
 Build + 205/205. Capture `$env:TEMP\bengy-task6-empty.png`. Then manually drive (or reuse the session's ux-tour pattern): type ticket `PROJ-1234` + title, capture valid; add `?`, capture invalid.
 Expected: palette layout per spec §3; acrylic visible behind content now that the page is transparent (if still opaque → apply the spec §8 fallback and note it).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/BeNGy/Views/MainPage.xaml src/BeNGy/Views/MainPage.xaml.cs
@@ -748,7 +748,7 @@ git commit -m "feat(design): palette-style main page layout"
 **Interfaces:**
 - Consumes: `SettingsCard`, `SettingsRowSeparator`, `SectionHeader`, `GlyphButton`, `KeycapChip`, `Caption` styles; all existing `SettingsViewModel` bindings unchanged (`AvailablePrefixes`, `DefaultPrefix`, `AvailableTitleFormats`, `SelectedTitleFormat`, `AvailableSeparators`, `PrefixTicketSeparator`, `TicketTitleSeparator`, `HotkeyDisplay`, `ChangeButtonText`, `ChangeHotkeyCommand`, `HotkeyError`, `IsCapturingHotkey`, `AvailableThemes`, `SelectedThemeString`, `StartWithWindows`, `StartMinimized`, `DelayOptions`, `SelectedDelayOption`, `AutoCloseDelayLabel`).
 
-- [ ] **Step 1: Replace SettingsPage.xaml content**
+- [x] **Step 1: Replace SettingsPage.xaml content**
 
 ```xml
 	<Grid>
@@ -909,12 +909,12 @@ git commit -m "feat(design): palette-style main page layout"
 	</Grid>
 ```
 
-- [ ] **Step 2: Build, unit tests, screenshot of settings**
+- [x] **Step 2: Build, unit tests, screenshot of settings**
 
 Build + 205/205; capture main, click the gear (or navigate via tray Settings), capture `$env:TEMP\bengy-task7-settings.png`.
 Expected: card groups per spec §4, window grew to 560×620 on navigation, back chevron returns and shrinks the window.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/BeNGy/Views/SettingsPage.xaml
@@ -932,7 +932,7 @@ git commit -m "feat(design): PowerToys-style settings cards"
 **Interfaces:**
 - Produces: `static void FluentHandlers.Register()` — per-control WinUI adjustments MAUI styles can't reach: 4px corner radius on TextBox/ComboBox and removal of the WinUI focus underline in favor of an even 1px border.
 
-- [ ] **Step 1: Write FluentHandlers.cs**
+- [x] **Step 1: Write FluentHandlers.cs**
 
 ```csharp
 namespace BeNGy.Platforms.Windows;
@@ -962,7 +962,7 @@ public static class FluentHandlers
 }
 ```
 
-- [ ] **Step 2: Register in MauiProgram.cs**
+- [x] **Step 2: Register in MauiProgram.cs**
 
 Inside `CreateMauiApp()`, before `return builder.Build();`:
 
@@ -972,12 +972,12 @@ Inside `CreateMauiApp()`, before `return builder.Build();`:
 #endif
 ```
 
-- [ ] **Step 3: Build, unit tests, screenshot**
+- [x] **Step 3: Build, unit tests, screenshot**
 
 Build + 205/205; capture and compare input corners/focus behavior (click into ticket field first).
 Expected: inputs have 4px radii and no fat accent underline on focus. If a handler tweak crashes or has no effect, delete that single mapping, note it in the commit message, and move on (spec §8 fallback).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/BeNGy/Platforms/Windows/FluentHandlers.cs src/BeNGy/MauiProgram.cs
@@ -991,28 +991,40 @@ git commit -m "feat(design): WinUI handler polish for inputs"
 **Files:**
 - No source changes expected (fixes only if verification fails).
 
-- [ ] **Step 1: Full build + unit suite**
+- [x] **Step 1: Full build + unit suite**
 
 `dotnet build D:/projects/bengy/BeNGy.sln -v minimal` → 0 warnings/errors; unit 205/205.
 
-- [ ] **Step 2: Screenshot set for approval**
+> Done 2026-11-11: 0 warnings/errors; unit 209/209.
+
+- [x] **Step 2: Screenshot set for approval**
 
 Using `tools/dev/capture-bengy.ps1` + manual driving, produce: main empty, main valid, main invalid, settings — in BOTH light and dark (flip via Settings → Theme; restore to System afterwards). Save to the scratchpad and show all eight to the user.
 
-- [ ] **Step 3: Sandbox E2E run**
+> Done 2026-11-11 at 1920x1080 125%, driven through UIA patterns (no synthesized input). A theme change made through UIA while the dropdown is open leaves the window's UIA tree stuck on "PopupHost", so the app was relaunched after each theme switch, as the E2E fixture does. Theme restored to System.
+
+- [x] **Step 3: Sandbox E2E run**
 
 `powershell -File tests/BeNGy.E2ETests/run-e2e-sandbox.ps1`
 Expected: **48/65**, failure list identical to the 17 in Global Constraints. Diff the TRX against that list; any new failure = regression → fix before proceeding (LayoutFitTests and HiddenWindowRecoveryTests in particular must pass).
 
-- [ ] **Step 4: Restore user's desktop state**
+> Done 2026-11-11: **65/65** (the baseline became 65/65 in commit 5768219, so the 17-failure list above is obsolete). This was the first sandbox run at 125% (the guest now follows the host's scale). It exposed an intermittent drag-test failure, fixed in 6df6188.
+
+- [x] **Step 4: Restore user's desktop state**
 
 The sandbox leaves the host untouched, but Step 2's manual driving ran on the host: verify Default Prefix = `feature`, Theme = `System` in the app's Settings afterwards.
 
-- [ ] **Step 5: User approval gate**
+> Done 2026-11-11: Theme = System, read back after a relaunch. The capture never touches Default Prefix; it stayed at the user's own value (`hotfix`, not `feature`). The form was left empty and BeNGy closed, since it was not running before.
+
+- [x] **Step 5: User approval gate**
+
+> Approved by the user on 2026-11-11, after live-testing pass five.
 
 Present the screenshots and the E2E comparison. **Do not merge without explicit user approval of the look.**
 
-- [ ] **Step 6: Merge and push (only after approval)**
+- [x] **Step 6: Merge and push (only after approval)**
+
+> Merged and pushed on 2026-11-11 as release v1.1.0.
 
 ```bash
 git checkout main

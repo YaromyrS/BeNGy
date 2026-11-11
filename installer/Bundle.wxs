@@ -1,0 +1,25 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+  <!-- UpgradeCode is permanent, like the MSI's. The MSI is per-user, so the
+       bundle never asks for elevation. -->
+  <Bundle Name="BeNGy"
+          Manufacturer="BeNGy"
+          Version="$(var.Version)"
+          UpgradeCode="A3EF0014-5052-4834-8D2B-5A7B3617C1A8"
+          IconSourceFile="$(var.IconFile)"
+          HelpUrl="https://github.com/YaromyrS/BeNGy/issues"
+          AboutUrl="https://github.com/YaromyrS/BeNGy">
+
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication
+          Theme="hyperlinkLicense"
+          LicenseUrl="https://github.com/YaromyrS/BeNGy/blob/main/LICENSE"
+          LaunchTarget="[LocalAppDataFolder]Programs\BeNGy\BeNGy.exe"
+          ShowVersion="yes" />
+    </BootstrapperApplication>
+
+    <Chain>
+      <MsiPackage SourceFile="$(var.MsiPath)" />
+    </Chain>
+  </Bundle>
+</Wix>

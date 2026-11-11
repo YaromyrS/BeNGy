@@ -1,18 +1,18 @@
 using BeNGy.Services.Interfaces;
-using CommunityToolkit.Mvvm.Input;
-using H.NotifyIcon;
 using H.NotifyIcon.Core;
-using MuxControls = Microsoft.UI.Xaml.Controls;
 
 namespace BeNGy.Platforms.Windows;
 
 /// <summary>
-/// Windows implementation of <see cref="ITrayService"/> using H.NotifyIcon.WinUI.
-/// Manages the system tray icon, tooltip, and context menu.
+/// Windows implementation of <see cref="ITrayService"/> using H.NotifyIcon.Core's
+/// Win32 popup menu rather than the WinUI XAML flyout. The flyout variant hosts
+/// its menu on a hidden XAML window, which is unreliable on unpackaged WinAppSDK
+/// apps (menu items not responding); TrackPopupMenu has no such dependency.
 /// </summary>
 public class TrayService : ITrayService
 {
-    private TaskbarIcon? _trayIcon;
+    private TrayIconWithContextMenu? _trayIcon;
+    private System.Drawing.Icon? _icon;   // keeps the HICON alive for the tray's lifetime
     private bool _disposed;
 
     public event EventHandler? OpenRequested;
@@ -23,21 +23,53 @@ public class TrayService : ITrayService
     {
         if (_trayIcon != null) return;
 
-        _trayIcon = new TaskbarIcon();
-        _trayIcon.ToolTipText = "BeNGy";
-        _trayIcon.ContextFlyout = CreateContextMenu();
+        // The icon's GUID is hashed from this name, and Windows ties a tray GUID
+        // to the executable's path (NOTIFYICONDATA guidItem). A Store (MSIX)
+        // install moves to a new versioned folder on every update, so the path
+        // is part of the seed or the icon could fail to appear after an update.
+        _trayIcon = new TrayIconWithContextMenu($"BeNGy|{Environment.ProcessPath}")
+        {
+            ContextMenu = new PopupMenu
+            {
+                Items =
+                {
+                    // Bold "default action" styling is not available on a Win32
+                    // menu; Open stays first, which is the convention that matters.
+                    new PopupMenuItem("Open", (_, _) => Raise(OpenRequested)),
+                    new PopupMenuItem("Settings", (_, _) => Raise(SettingsRequested)),
+                    new PopupMenuSeparator(),
+                    new PopupMenuItem("Exit", (_, _) => Raise(ExitRequested)),
+                },
+            },
+        };
 
-        // Double-click tray icon to show window (AC #3 of Story 1.4)
-        _trayIcon.DoubleClickCommand = new RelayCommand(() => OpenRequested?.Invoke(this, EventArgs.Empty));
+        _trayIcon.UpdateToolTip("BeNGy");
 
         // Load tray icon from embedded resources
         var iconStream = GetTrayIconStream();
         if (iconStream != null)
         {
-            _trayIcon.Icon = new System.Drawing.Icon(iconStream);
+            _icon = new System.Drawing.Icon(iconStream);
+            _trayIcon.UpdateIcon(_icon.Handle);
         }
 
-        _trayIcon.ForceCreate();
+        // Double-click tray icon to show window (AC #3 of Story 1.4)
+        _trayIcon.MessageWindow.MouseEventReceived += (_, e) =>
+        {
+            if (e.MouseEvent is MouseEvent.IconDoubleClick or MouseEvent.IconLeftDoubleClick)
+                Raise(OpenRequested);
+        };
+
+        _trayIcon.Create();
+    }
+
+    /// <summary>
+    /// Menu callbacks arrive on the tray's message-loop thread; every subscriber
+    /// touches AppWindow/XAML, so marshal to the UI thread before raising.
+    /// </summary>
+    private void Raise(EventHandler? handler)
+    {
+        MainThread.BeginInvokeOnMainThread(() => handler?.Invoke(this, EventArgs.Empty));
     }
 
     private static Stream? GetTrayIconStream()
@@ -55,21 +87,9 @@ public class TrayService : ITrayService
         }
     }
 
-    public void ShowIcon()
-    {
-        if (_trayIcon != null)
-        {
-            _trayIcon.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
-        }
-    }
+    public void ShowIcon() => _trayIcon?.Show();
 
-    public void HideIcon()
-    {
-        if (_trayIcon != null)
-        {
-            _trayIcon.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
-        }
-    }
+    public void HideIcon() => _trayIcon?.Hide();
 
     public void Dispose()
     {
@@ -82,8 +102,11 @@ public class TrayService : ITrayService
         if (_disposed) return;
         if (disposing)
         {
+            _trayIcon?.TryRemove();
             _trayIcon?.Dispose();
             _trayIcon = null;
+            _icon?.Dispose();
+            _icon = null;
         }
         _disposed = true;
     }
@@ -91,30 +114,5 @@ public class TrayService : ITrayService
     public void ShowBalloon(string title, string message)
     {
         _trayIcon?.ShowNotification(title, message, NotificationIcon.Info);
-    }
-
-    private MuxControls.MenuFlyout CreateContextMenu()
-    {
-        var menu = new MuxControls.MenuFlyout();
-
-        var openItem = new MuxControls.MenuFlyoutItem
-        {
-            Text = "Open",
-            FontWeight = Microsoft.UI.Text.FontWeights.Bold  // Primary/default action (Story 5.3)
-        };
-        openItem.Click += (_, _) => OpenRequested?.Invoke(this, EventArgs.Empty);
-
-        var settingsItem = new MuxControls.MenuFlyoutItem { Text = "Settings" };
-        settingsItem.Click += (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty);
-
-        var exitItem = new MuxControls.MenuFlyoutItem { Text = "Exit" };
-        exitItem.Click += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
-
-        menu.Items.Add(openItem);
-        menu.Items.Add(settingsItem);
-        menu.Items.Add(new MuxControls.MenuFlyoutSeparator());
-        menu.Items.Add(exitItem);
-
-        return menu;
     }
 }

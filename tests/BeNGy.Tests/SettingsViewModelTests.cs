@@ -79,8 +79,51 @@ public class SettingsViewModelTests
     {
         var vm = CreateVm();
 
-        var expected = new[] { "feature", "bugfix", "hotfix", "release" };
+        var expected = new[] { "feature", "bugfix", "hotfix", "release", "task" };
         Assert.Equal(expected, vm.AvailablePrefixes);
+    }
+
+    [Fact]
+    public void AddPrefix_AppendsAndPersists()
+    {
+        var vm = CreateVm();
+        vm.NewPrefix = "spike";
+
+        vm.AddPrefixCommand.Execute(null);
+
+        Assert.Contains("spike", vm.AvailablePrefixes);
+        Assert.Equal(string.Empty, vm.NewPrefix);
+        _preferences.Received().Set(PreferenceKeys.BranchPrefixes,
+            "feature,bugfix,hotfix,release,task,spike");
+    }
+
+    [Fact]
+    public void AddPrefix_IgnoresEmptyAndDuplicates()
+    {
+        var vm = CreateVm();
+
+        vm.NewPrefix = "   ";
+        vm.AddPrefixCommand.Execute(null);
+        vm.NewPrefix = "feature";
+        vm.AddPrefixCommand.Execute(null);
+
+        Assert.Equal(5, vm.AvailablePrefixes.Count);
+        _preferences.DidNotReceive().Set(PreferenceKeys.BranchPrefixes, Arg.Any<string>());
+    }
+
+    [Fact]
+    public void RemovePrefix_RemovesAndPersists_AndReassignsDefault()
+    {
+        var vm = CreateVm();
+        vm.DefaultPrefix = "task";
+        _preferences.ClearReceivedCalls();
+
+        vm.RemovePrefixCommand.Execute("task");
+
+        Assert.DoesNotContain("task", vm.AvailablePrefixes);
+        Assert.Equal("feature", vm.DefaultPrefix);
+        _preferences.Received().Set(PreferenceKeys.BranchPrefixes,
+            "feature,bugfix,hotfix,release");
     }
 
     // ── Story 6.3: Hotkey Display ─────────────────────────────────
@@ -112,13 +155,94 @@ public class SettingsViewModelTests
     }
 
     [Fact]
-    public void ChangeHotkeyCommand_SetsErrorMessage()
+    public void ChangeHotkeyCommand_StartsCapture_PromptIsNotAnError()
     {
         var vm = CreateVm();
 
         vm.ChangeHotkeyCommand.Execute(null);
 
-        Assert.NotEmpty(vm.HotkeyError);
+        Assert.True(vm.IsCapturingHotkey);
+        Assert.Equal("Cancel", vm.ChangeButtonText);
+        Assert.Empty(vm.HotkeyError);   // the view shows the prompt; HotkeyError is red
+    }
+
+    [Fact]
+    public void Capture_EscapeCancels_WithoutRegistering()
+    {
+        var vm = CreateVm();
+        vm.ChangeHotkeyCommand.Execute(null);
+
+        vm.HandleCaptureKeyDownCommand.Execute((HotkeyModifiers.None, HotkeyKey.Escape));
+
+        Assert.False(vm.IsCapturingHotkey);
+        Assert.Equal("Change", vm.ChangeButtonText);
+        Assert.Empty(vm.HotkeyError);
+        _hotkeyService.DidNotReceive().RegisterHotkey(Arg.Any<HotkeyModifiers>(), Arg.Any<HotkeyKey>());
+    }
+
+    [Fact]
+    public void Capture_CurrentHotkeyPressed_Cancels()
+    {
+        // The registered hotkey is swallowed globally and arrives as HotkeyPressed,
+        // never as a key-down on the page.
+        var vm = CreateVm();
+        vm.ChangeHotkeyCommand.Execute(null);
+
+        _hotkeyService.HotkeyPressed += Raise.Event();
+
+        Assert.False(vm.IsCapturingHotkey);
+        _hotkeyService.DidNotReceive().RegisterHotkey(Arg.Any<HotkeyModifiers>(), Arg.Any<HotkeyKey>());
+    }
+
+    [Fact]
+    public void Capture_ListensForHotkeyPressedOnlyWhileCapturing()
+    {
+        var vm = CreateVm();
+        _hotkeyService.DidNotReceive().HotkeyPressed += Arg.Any<EventHandler>();
+
+        vm.ChangeHotkeyCommand.Execute(null);
+        _hotkeyService.Received(1).HotkeyPressed += Arg.Any<EventHandler>();
+
+        vm.CancelHotkeyCapture();
+        _hotkeyService.Received(1).HotkeyPressed -= Arg.Any<EventHandler>();
+    }
+
+    [Fact]
+    public void Capture_SuccessfulRegistration_StopsListeningForHotkeyPressed()
+    {
+        _hotkeyService.RegisterHotkey(HotkeyModifiers.Control | HotkeyModifiers.Alt, HotkeyKey.K)
+            .Returns(HotkeyRegistrationResult.Success());
+        var vm = CreateVm();
+        vm.ChangeHotkeyCommand.Execute(null);
+
+        vm.HandleCaptureKeyDownCommand.Execute((HotkeyModifiers.Control | HotkeyModifiers.Alt, HotkeyKey.K));
+
+        Assert.False(vm.IsCapturingHotkey);
+        _hotkeyService.Received(1).HotkeyPressed -= Arg.Any<EventHandler>();
+    }
+
+    [Fact]
+    public void CancelHotkeyCapture_RestoresUnavailableMessage_WhenNotRegistered()
+    {
+        _hotkeyService.IsRegistered.Returns(false);
+        var vm = CreateVm();
+        vm.ChangeHotkeyCommand.Execute(null);
+        Assert.Empty(vm.HotkeyError);
+
+        vm.CancelHotkeyCapture();
+
+        Assert.Contains("unavailable", vm.HotkeyError);
+    }
+
+    [Fact]
+    public void CancelHotkeyCapture_WhenNotCapturing_IsANoOp()
+    {
+        var vm = CreateVm();
+
+        vm.CancelHotkeyCapture();
+
+        Assert.False(vm.IsCapturingHotkey);
+        _hotkeyService.DidNotReceive().HotkeyPressed -= Arg.Any<EventHandler>();
     }
 
     // ── Story 6.4: Theme Selection ────────────────────────────────
@@ -190,6 +314,30 @@ public class SettingsViewModelTests
         _startupService.Received(1).SetStartWithWindows(true);
     }
 
+    [Fact]
+    public void StartWithWindows_AppliedByWindows_StaysOn()
+    {
+        var vm = CreateVm();
+        _startupService.When(s => s.SetStartWithWindows(true))
+            .Do(_ => _startupService.IsStartWithWindows.Returns(true));
+
+        vm.StartWithWindows = true;
+
+        Assert.True(vm.StartWithWindows);
+    }
+
+    [Fact]
+    public void StartWithWindows_RefusedByWindows_ShowsTheRealState()
+    {
+        // Store build: the user disabled BeNGy in Task Manager's startup apps,
+        // so enabling it from the app has no effect.
+        var vm = CreateVm();   // IsStartWithWindows stays false
+
+        vm.StartWithWindows = true;
+
+        Assert.False(vm.StartWithWindows);
+    }
+
     // ── Story 6.6: Start Minimized ────────────────────────────────
 
     [Fact]
@@ -224,11 +372,12 @@ public class SettingsViewModelTests
     // ── Story 6.7: Auto-Close Delay ───────────────────────────────
 
     [Fact]
-    public void SelectedDelayOption_DefaultsTo500()
+    public void SelectedDelayOption_DefaultsToFast200()
     {
+        // Palette redesign feedback: auto-close should be fast by default.
         var vm = CreateVm();
 
-        Assert.Equal(500, vm.SelectedDelayOption.Value);
+        Assert.Equal(200, vm.SelectedDelayOption.Value);
     }
 
     [Fact]
@@ -269,7 +418,7 @@ public class SettingsViewModelTests
     {
         var vm = CreateVm();
 
-        Assert.Contains("500ms", vm.AutoCloseDelayLabel);
+        Assert.Contains("200ms", vm.AutoCloseDelayLabel);
     }
 
     [Fact]

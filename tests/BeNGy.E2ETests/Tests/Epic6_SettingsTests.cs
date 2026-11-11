@@ -2,6 +2,7 @@ using BeNGy.E2ETests.Helpers;
 using FlaUI.Core.Input;
 using FlaUI.Core.Tools;
 using FlaUI.Core.WindowsAPI;
+using Xunit.Abstractions;
 
 namespace BeNGy.E2ETests.Tests;
 
@@ -14,11 +15,35 @@ namespace BeNGy.E2ETests.Tests;
 public class Epic6_SettingsTests
 {
     private readonly AppTestFixture _fixture;
+    private readonly ITestOutputHelper _output;
 
-    public Epic6_SettingsTests(AppTestFixture fixture)
+    public Epic6_SettingsTests(AppTestFixture fixture, ITestOutputHelper output)
     {
         _fixture = fixture;
-        _fixture.EnsureRunning();
+        _output = output;
+        _fixture.ResetForTest();
+    }
+
+    /// <summary>
+    /// Puts a settings picker back to its original value. Preferences persist for
+    /// the whole run, so a setting a test changes otherwise leaks into every later
+    /// test (the copy tests got "bugfix/..." instead of "feature/..."). Runs in
+    /// finally, so it reports instead of throwing: an exception here would
+    /// replace the test's own failure.
+    /// </summary>
+    private void RestorePicker(string pickerId, string? originalText)
+    {
+        if (originalText is null) return;
+        try
+        {
+            var settingsWindow = NavigateToSettings();
+            _fixture.SelectComboItem(_fixture.WaitForElement(settingsWindow, pickerId), originalText);
+            CleanupToMainPage();
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"Could not restore {pickerId} to '{originalText}': {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -90,7 +115,10 @@ public class Epic6_SettingsTests
             if (picker != null)
                 return settingsWindow;
 
-            // Invoke was swallowed — try keyboard fallback (Focus + Space)
+            // Picker not found: historically blamed on Invoke being "swallowed".
+            // The real cause was GetMainWindow returning a popup (tooltip or open
+            // dropdown) instead of the app window, since fixed in AppTestFixture.
+            // Kept as a harmless fallback: keyboard Focus + Space.
             window = _fixture.GetMainWindow();
             settingsButton = _fixture.FindByAutomationId(window, "SettingsButton");
             if (settingsButton != null)
@@ -125,7 +153,15 @@ public class Epic6_SettingsTests
         Wait.UntilInputIsProcessed(TimeSpan.FromSeconds(1));
         Thread.Sleep(1000);
         finalWindow = _fixture.GetMainWindow();
-        _fixture.WaitForElement(finalWindow, AutomationIds.DefaultPrefixPicker, TimeSpan.FromSeconds(5));
+        try
+        {
+            _fixture.WaitForElement(finalWindow, AutomationIds.DefaultPrefixPicker, TimeSpan.FromSeconds(5));
+        }
+        catch (TimeoutException)
+        {
+            _fixture.CaptureDiagnostics("epic6-settings-did-not-open");
+            throw;
+        }
         return finalWindow;
     }
 
@@ -199,24 +235,32 @@ public class Epic6_SettingsTests
         Assert.NotNull(prefixPicker);
 
         var comboBox = prefixPicker.AsComboBox();
-        if (comboBox is not null && comboBox.Items.Length > 1)
+        var original = comboBox?.SelectedItem?.Text;
+        try
         {
-            var targetItem = comboBox.Items[1];
-            var selectedValue = targetItem.Text;
-            comboBox.Select(1);
-            Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(300));
+            if (comboBox is not null && comboBox.Items.Length > 1)
+            {
+                var targetItem = comboBox.Items[1];
+                var selectedValue = targetItem.Text;
+                comboBox.Select(1);
+                Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(300));
 
-            // Use ResetApp between navigations (avoids Invoke unreliability)
-            ResetApp();
-            settingsWindow = NavigateToSettings();
+                // Use ResetApp between navigations (avoids Invoke unreliability)
+                ResetApp();
+                settingsWindow = NavigateToSettings();
 
-            var reopenedPicker = _fixture.WaitForElement(settingsWindow, AutomationIds.DefaultPrefixPicker);
-            var reopenedCombo = reopenedPicker.AsComboBox();
-            Assert.NotNull(reopenedCombo);
-            Assert.Equal(selectedValue, reopenedCombo.SelectedItem?.Text);
+                var reopenedPicker = _fixture.WaitForElement(settingsWindow, AutomationIds.DefaultPrefixPicker);
+                var reopenedCombo = reopenedPicker.AsComboBox();
+                Assert.NotNull(reopenedCombo);
+                Assert.Equal(selectedValue, reopenedCombo.SelectedItem?.Text);
+            }
+
+            CleanupToMainPage();
         }
-
-        CleanupToMainPage();
+        finally
+        {
+            RestorePicker(AutomationIds.DefaultPrefixPicker, original);
+        }
     }
 
     [Fact]
@@ -255,26 +299,33 @@ public class Epic6_SettingsTests
             return;
 
         var currentSelected = comboBox.SelectedItem?.Text;
-        var newIndex = (currentSelected == comboBox.Items[0].Text) ? 1 : 0;
-        comboBox.Select(newIndex);
-        Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(300));
+        try
+        {
+            var newIndex = (currentSelected == comboBox.Items[0].Text) ? 1 : 0;
+            comboBox.Select(newIndex);
+            Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(300));
 
-        // Step 2: ResetApp to return to main page (setting persists, avoids DoneButton Invoke issue)
-        ResetApp();
+            // Step 2: ResetApp to return to main page (setting persists, avoids DoneButton Invoke issue)
+            ResetApp();
 
-        // Step 3: Type text on main page and verify preview is generated
-        var mainWindow = _fixture.GetMainWindow();
-        var ticketEntry = _fixture.WaitForElement(mainWindow, AutomationIds.TicketEntry);
-        var titleEntry = _fixture.WaitForElement(mainWindow, AutomationIds.TitleEntry);
+            // Step 3: Type text on main page and verify preview is generated
+            var mainWindow = _fixture.GetMainWindow();
+            var ticketEntry = _fixture.WaitForElement(mainWindow, AutomationIds.TicketEntry);
+            var titleEntry = _fixture.WaitForElement(mainWindow, AutomationIds.TitleEntry);
 
-        _fixture.TypeText(ticketEntry, "123");
-        _fixture.TypeText(titleEntry, "my test title");
-        Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
+            _fixture.TypeText(ticketEntry, "123");
+            _fixture.TypeText(titleEntry, "my test title");
+            Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        var previewLabel = _fixture.FindByAutomationId(mainWindow, AutomationIds.PreviewLabel);
-        Assert.NotNull(previewLabel);
-        var updatedPreview = previewLabel.Properties.Name.ValueOrDefault;
-        Assert.NotNull(updatedPreview);
+            var previewLabel = _fixture.FindByAutomationId(mainWindow, AutomationIds.PreviewLabel);
+            Assert.NotNull(previewLabel);
+            var updatedPreview = previewLabel.Properties.Name.ValueOrDefault;
+            Assert.NotNull(updatedPreview);
+        }
+        finally
+        {
+            RestorePicker(AutomationIds.TitleFormatPicker, currentSelected);
+        }
     }
 
     [Fact]
@@ -344,28 +395,35 @@ public class Epic6_SettingsTests
         var settingsWindow = NavigateToSettings();
         var titleFormatPicker = _fixture.WaitForElement(settingsWindow, AutomationIds.TitleFormatPicker);
         var comboBox = titleFormatPicker.AsComboBox();
-
-        string? selectedValue = null;
-        if (comboBox is not null && comboBox.Items.Length > 1)
+        var original = comboBox?.SelectedItem?.Text;
+        try
         {
-            comboBox.Select(1);
-            Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(300));
-            selectedValue = comboBox.SelectedItem?.Text;
+            string? selectedValue = null;
+            if (comboBox is not null && comboBox.Items.Length > 1)
+            {
+                comboBox.Select(1);
+                Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(300));
+                selectedValue = comboBox.SelectedItem?.Text;
+            }
+
+            if (selectedValue is null)
+                return;
+
+            // Close and relaunch
+            ResetApp();
+            settingsWindow = NavigateToSettings();
+
+            var reopenedPicker = _fixture.WaitForElement(settingsWindow, AutomationIds.TitleFormatPicker);
+            var reopenedCombo = reopenedPicker.AsComboBox();
+            Assert.NotNull(reopenedCombo);
+            Assert.Equal(selectedValue, reopenedCombo.SelectedItem?.Text);
+
+            CleanupToMainPage();
         }
-
-        if (selectedValue is null)
-            return;
-
-        // Close and relaunch
-        ResetApp();
-        settingsWindow = NavigateToSettings();
-
-        var reopenedPicker = _fixture.WaitForElement(settingsWindow, AutomationIds.TitleFormatPicker);
-        var reopenedCombo = reopenedPicker.AsComboBox();
-        Assert.NotNull(reopenedCombo);
-        Assert.Equal(selectedValue, reopenedCombo.SelectedItem?.Text);
-
-        CleanupToMainPage();
+        finally
+        {
+            RestorePicker(AutomationIds.TitleFormatPicker, original);
+        }
     }
 
     [Fact]

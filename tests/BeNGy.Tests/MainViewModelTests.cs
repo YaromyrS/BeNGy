@@ -36,15 +36,38 @@ public class MainViewModelTests
     [Fact]
     public void PrefixOptions_ContainsExpectedItems()
     {
-        var expected = new[] { "feature", "bugfix", "hotfix", "release" };
+        var expected = new[] { "feature", "bugfix", "hotfix", "release", "task" };
 
         Assert.Equal(expected, _viewModel.PrefixOptions);
     }
 
     [Fact]
-    public void PrefixOptions_HasExactlyFourItems()
+    public void PrefixOptions_MatchesDefaultCatalog()
     {
-        Assert.Equal(4, _viewModel.PrefixOptions.Count);
+        Assert.Equal(5, _viewModel.PrefixOptions.Count);
+    }
+
+    [Fact]
+    public void RefreshFromPreferences_RegeneratesPreviewWithNewSeparator()
+    {
+        // Simulates: user types, opens settings, changes a separator, returns.
+        var prefs = NSubstitute.Substitute.For<BeNGy.Services.Interfaces.IPreferencesService>();
+        prefs.Get(Arg.Any<string>(), Arg.Any<string>()).Returns(ci => ci.ArgAt<string>(1));
+        prefs.Get(Arg.Any<string>(), Arg.Any<int>()).Returns(ci => ci.ArgAt<int>(1));
+        prefs.Get(Arg.Any<string>(), Arg.Any<bool>()).Returns(ci => ci.ArgAt<bool>(1));
+        var vm = new MainViewModel(_generator, _validator, _clipboard, _windowService, prefs);
+
+        vm.TicketNumber = "EXP-1";
+        vm.Title = "do thing";
+        var before = vm.GeneratedBranchName;
+        Assert.Contains("/", before);   // default prefix/ticket separator
+
+        // Settings changed the separator; nothing typed afterwards.
+        prefs.Get(BeNGy.Models.PreferenceKeys.PrefixTicketSeparator, Arg.Any<string>()).Returns(".");
+        vm.RefreshFromPreferences();
+
+        Assert.Contains(".", vm.GeneratedBranchName);
+        Assert.NotEqual(before, vm.GeneratedBranchName);
     }
 
     // ── Default values ───────────────────────────────────────────
@@ -286,65 +309,56 @@ public class MainViewModelTests
     }
 
     // ── Specific invalid character feedback ─────────────────────
+    // ValidationMessage is the warning InfoBar's only text, so it alone must
+    // name the offending characters in a readable form.
 
     [Fact]
-    public void HasInvalidCharacters_False_WhenValid()
+    public void ValidationMessage_Empty_WhenValid()
     {
         _viewModel.Prefix = "feature";
         _viewModel.TicketNumber = "PROJ-123";
 
-        Assert.False(_viewModel.HasInvalidCharacters);
-        Assert.Equal(string.Empty, _viewModel.InvalidCharactersDisplay);
+        Assert.Equal(string.Empty, _viewModel.ValidationMessage);
     }
 
     [Fact]
-    public void HasInvalidCharacters_True_WhenInvalidCharPresent()
+    public void ValidationMessage_QuotesIndividualInvalidChars()
     {
         _viewModel.Prefix = "feature";
         _viewModel.TicketNumber = "PROJ?123";
 
-        Assert.True(_viewModel.HasInvalidCharacters);
-        Assert.NotEmpty(_viewModel.InvalidCharactersDisplay);
+        Assert.Contains("'?'", _viewModel.ValidationMessage);
     }
 
     [Fact]
-    public void InvalidCharactersDisplay_QuotesIndividualChars()
-    {
-        _viewModel.Prefix = "feature";
-        _viewModel.TicketNumber = "PROJ?123";
-
-        Assert.Contains("'?'", _viewModel.InvalidCharactersDisplay);
-    }
-
-    [Fact]
-    public void InvalidCharactersDisplay_ShowsWordForSpace()
+    public void ValidationMessage_ShowsWordForSpace()
     {
         _viewModel.Prefix = "feature";
         _viewModel.TicketNumber = "PROJ 123";
 
-        Assert.Contains("space", _viewModel.InvalidCharactersDisplay);
+        Assert.Contains("space", _viewModel.ValidationMessage);
     }
 
     [Fact]
-    public void InvalidCharactersDisplay_ListsAllInvalidChars()
+    public void ValidationMessage_ListsAllInvalidChars()
     {
         _viewModel.Prefix = "feature";
         _viewModel.TicketNumber = "PR?OJ*123";
 
-        var display = _viewModel.InvalidCharactersDisplay;
-        Assert.Contains("'?'", display);
-        Assert.Contains("'*'", display);
+        var message = _viewModel.ValidationMessage;
+        Assert.Contains("'?'", message);
+        Assert.Contains("'*'", message);
     }
 
     [Fact]
-    public void InvalidCharactersDisplay_ClearsWhenFixed()
+    public void ValidationMessage_ClearsWhenFixed()
     {
         _viewModel.Prefix = "feature";
         _viewModel.TicketNumber = "PROJ?123";
-        Assert.NotEmpty(_viewModel.InvalidCharactersDisplay);
+        Assert.NotEmpty(_viewModel.ValidationMessage);
 
         _viewModel.TicketNumber = "PROJ-123";
-        Assert.Equal(string.Empty, _viewModel.InvalidCharactersDisplay);
+        Assert.Equal(string.Empty, _viewModel.ValidationMessage);
     }
 
     [Fact]
@@ -437,6 +451,35 @@ public class MainViewModelTests
         await _viewModel.CopyCommand.ExecuteAsync(null);
 
         _windowService.Received(1).HideWindow();
+    }
+
+    [Fact]
+    public async Task CopyKeepOpen_CopiesButKeepsWindowAndForm()
+    {
+        _viewModel.Prefix = "bugfix";
+        _viewModel.TicketNumber = "PROJ-123";
+        _viewModel.Title = "some title";
+
+        await _viewModel.CopyKeepOpenCommand.ExecuteAsync(null);
+
+        await _clipboard.Received(1).CopyToClipboardAsync("bugfix/PROJ-123_some-title");
+        _windowService.DidNotReceive().HideWindow();
+        Assert.Equal("PROJ-123", _viewModel.TicketNumber);
+        Assert.Equal("some title", _viewModel.Title);
+        Assert.Equal("Copy", _viewModel.CopyButtonText);   // feedback reset afterwards
+    }
+
+    [Fact]
+    public void CopyKeepOpen_CanExecute_FollowsValidation()
+    {
+        Assert.False(_viewModel.CopyKeepOpenCommand.CanExecute(null));   // empty
+
+        _viewModel.Prefix = "feature";
+        _viewModel.TicketNumber = "PROJ-123";
+        Assert.True(_viewModel.CopyKeepOpenCommand.CanExecute(null));
+
+        _viewModel.TicketNumber = "PROJ?123";
+        Assert.False(_viewModel.CopyKeepOpenCommand.CanExecute(null));
     }
 
     [Fact]

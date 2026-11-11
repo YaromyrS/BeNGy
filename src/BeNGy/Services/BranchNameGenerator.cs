@@ -15,15 +15,20 @@ public class BranchNameGenerator : IBranchNameGenerator
         var transformedTitle = TransformTitle(input.Title, input.TitleFormat);
 
         var result = input.Prefix;
+        var hasTicket = !string.IsNullOrWhiteSpace(input.TicketNumber);
 
-        if (!string.IsNullOrWhiteSpace(input.TicketNumber))
+        if (hasTicket)
         {
             result += input.PrefixTicketSeparator + input.TicketNumber;
         }
 
         if (!string.IsNullOrWhiteSpace(transformedTitle))
         {
-            result += input.TicketTitleSeparator + transformedTitle;
+            // Whatever directly follows the prefix gets the prefix separator, so
+            // a ticket-less branch reads "feature/add-login" (grouped under the
+            // feature/ folder by git tools), not "feature_add-login".
+            result += (hasTicket ? input.TicketTitleSeparator : input.PrefixTicketSeparator)
+                + transformedTitle;
         }
 
         return result;

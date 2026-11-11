@@ -14,18 +14,23 @@ public class Epic3_ValidationTests
     public Epic3_ValidationTests(AppTestFixture fixture)
     {
         _fixture = fixture;
-        _fixture.EnsureRunning();
+        _fixture.ResetForTest();
     }
 
     private Window GetWindow()
     {
+        // Starts from an empty form: the constructor's ResetForTest cleared both
+        // fields (validation state depends on BOTH, so a leftover ticket matters).
         _fixture.EnsureRunning();
         return _fixture.GetMainWindow();
     }
 
     [Fact]
-    public void Validation_ValidInput_ShowsGreenValidIndicator() // FR12
+    public void Validation_ValidInput_ShowsNoWarning() // FR12
     {
+        // Valid is the default state and gets no verdict UI at all (user
+        // decision during the palette redesign) — only problems get pixels.
+
         // Arrange
         var window = GetWindow();
         var ticketEntry = _fixture.WaitForElement(window, AutomationIds.TicketEntry);
@@ -37,15 +42,15 @@ public class Epic3_ValidationTests
         _fixture.TypeText(titleEntry, "valid-title");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Assert — valid indicator should be visible
-        var validIndicator = _fixture.FindByAutomationId(window, AutomationIds.ValidIndicator);
-        Assert.NotNull(validIndicator);
-        Assert.False(validIndicator.IsOffscreen,
-            "Valid indicator should be visible for valid input.");
+        // Assert — no warning UI. The InfoBar container itself has no UIA peer
+        // (WinUI Border/panels don't), so anchor on the message label inside it.
+        var warningMessage = _fixture.FindByAutomationId(window, AutomationIds.ValidationMessageLabel);
+        Assert.True(warningMessage is null || warningMessage.IsOffscreen,
+            "No warning UI should be shown for valid input.");
     }
 
     [Fact]
-    public void Validation_InvalidCharacter_ShowsAmberWarningIndicator() // FR12
+    public void Validation_InvalidCharacter_ShowsWarningInfoBar() // FR12
     {
         // Arrange
         var window = GetWindow();
@@ -55,11 +60,12 @@ public class Epic3_ValidationTests
         _fixture.TypeText(titleEntry, "bad?title");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Assert — invalid indicator should be visible
-        var invalidIndicator = _fixture.FindByAutomationId(window, AutomationIds.InvalidIndicator);
-        Assert.NotNull(invalidIndicator);
-        Assert.False(invalidIndicator.IsOffscreen,
-            "Invalid/warning indicator should be visible for invalid input.");
+        // Assert — the warning InfoBar should be visible. Anchor on the message
+        // label inside it: the container itself has no UIA peer.
+        var warningMessage = _fixture.WaitForElement(window, AutomationIds.ValidationMessageLabel);
+        Assert.NotNull(warningMessage);
+        Assert.False(warningMessage.IsOffscreen,
+            "Warning InfoBar should be visible for invalid input.");
     }
 
     [Fact]
@@ -73,14 +79,14 @@ public class Epic3_ValidationTests
         _fixture.TypeText(titleEntry, "bad?title");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Assert — invalid chars label shows the "?" character
-        var invalidCharsLabel = _fixture.WaitForElement(window, AutomationIds.InvalidCharsLabel);
-        var labelText = invalidCharsLabel.AsLabel().Text;
+        // Assert — the warning message names the "?" character
+        var messageLabel = _fixture.WaitForElement(window, AutomationIds.ValidationMessageLabel);
+        var labelText = messageLabel.AsLabel().Text;
         Assert.Contains("?", labelText);
     }
 
     [Fact]
-    public void Validation_SpaceInTicket_ShowsSpaceInInvalidCharsDisplay() // FR12, FR13
+    public void Validation_SpaceInTicket_WarningSpellsOutSpace() // FR12, FR13
     {
         // Arrange
         var window = GetWindow();
@@ -90,9 +96,9 @@ public class Epic3_ValidationTests
         _fixture.TypeText(ticketEntry, "PROJ 123");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Assert — invalid chars display mentions "space"
-        var invalidCharsLabel = _fixture.WaitForElement(window, AutomationIds.InvalidCharsLabel);
-        var labelText = invalidCharsLabel.AsLabel().Text;
+        // Assert — the warning message spells out "space"
+        var messageLabel = _fixture.WaitForElement(window, AutomationIds.ValidationMessageLabel);
+        var labelText = messageLabel.AsLabel().Text;
         Assert.Contains("space", labelText, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -107,9 +113,9 @@ public class Epic3_ValidationTests
         _fixture.TypeText(titleEntry, "bad?ti~tle");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Assert — both invalid chars are listed
-        var invalidCharsLabel = _fixture.WaitForElement(window, AutomationIds.InvalidCharsLabel);
-        var labelText = invalidCharsLabel.AsLabel().Text;
+        // Assert — both invalid chars are named in the warning message
+        var messageLabel = _fixture.WaitForElement(window, AutomationIds.ValidationMessageLabel);
+        var labelText = messageLabel.AsLabel().Text;
         Assert.Contains("?", labelText);
         Assert.Contains("~", labelText);
     }
@@ -124,20 +130,18 @@ public class Epic3_ValidationTests
         _fixture.TypeText(titleEntry, "bad?title");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Verify warning is showing
-        var invalidIndicator = _fixture.FindByAutomationId(window, AutomationIds.InvalidIndicator);
-        Assert.NotNull(invalidIndicator);
-        Assert.False(invalidIndicator.IsOffscreen);
+        // Verify warning is showing (via the message label; the container has no UIA peer)
+        var warningMessage = _fixture.WaitForElement(window, AutomationIds.ValidationMessageLabel);
+        Assert.False(warningMessage.IsOffscreen);
 
         // Act — fix the input
         _fixture.TypeText(titleEntry, "good-title");
         Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
 
-        // Assert — valid indicator should now be visible, invalid should be hidden
-        var validIndicator = _fixture.FindByAutomationId(window, AutomationIds.ValidIndicator);
-        Assert.NotNull(validIndicator);
-        Assert.False(validIndicator.IsOffscreen,
-            "Valid indicator should appear after fixing input.");
+        // Assert — the warning disappears; valid input shows no verdict UI
+        var warningAfter = _fixture.FindByAutomationId(window, AutomationIds.ValidationMessageLabel);
+        Assert.True(warningAfter is null || warningAfter.IsOffscreen,
+            "Warning should disappear once the input is fixed.");
     }
 
     [Fact]
@@ -177,21 +181,9 @@ public class Epic3_ValidationTests
             "Copy button should be disabled when validation fails.");
     }
 
-    [Fact]
-    public void Validation_Invalid_ShowsFixValidationHint() // FR32
-    {
-        // Arrange
-        var window = GetWindow();
-        var titleEntry = _fixture.WaitForElement(window, AutomationIds.TitleEntry);
-
-        // Act — enter invalid input
-        _fixture.TypeText(titleEntry, "bad?title");
-        Wait.UntilInputIsProcessed(TimeSpan.FromMilliseconds(500));
-
-        // Assert — a copy-blocked or validation hint label should appear
-        var copyBlockedLabel = _fixture.FindByAutomationId(window, AutomationIds.CopyBlockedLabel);
-        Assert.NotNull(copyBlockedLabel);
-        Assert.False(copyBlockedLabel.IsOffscreen,
-            "Copy blocked / fix validation hint should be visible.");
-    }
+    // Validation_Invalid_ShowsFixValidationHint was removed with the
+    // "Fix validation issues above to copy" hint itself (user feedback: the
+    // disabled Copy button plus the warning InfoBar already say it). FR32 is
+    // covered by Validation_Invalid_CopyButtonIsDisabled and
+    // Validation_InvalidCharacter_ShowsWarningInfoBar.
 }

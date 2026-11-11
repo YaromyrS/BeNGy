@@ -1,192 +1,139 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 			 xmlns:vm="clr-namespace:BeNGy.ViewModels"
 			 xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
 			 x:Class="BeNGy.Views.MainPage"
 			 x:DataType="vm:MainViewModel"
-			 Title="BeNGy">
+			 Title="BeNGy"
+			 BackgroundColor="Transparent"
+			 NavigationPage.HasNavigationBar="False">
 
-	<ContentPage.ToolbarItems>
-		<ToolbarItem Text="Settings" AutomationId="SettingsButton" Clicked="OnSettingsClicked" Priority="0" />
-	</ContentPage.ToolbarItems>
-
-	<!-- ScrollView so the primary action stays reachable at any DPI / text scale;
-	     the window is fixed size and non-resizable (WindowService). -->
+	<!-- ContentRoot's Height is what the window is fitted to. VerticalOptions
+	     Start is load-bearing: a ScrollView stretches Fill content to at least
+	     the viewport, so the measured height could grow but never shrink back. -->
 	<ScrollView>
-	<VerticalStackLayout Spacing="10" Padding="20">
+		<VerticalStackLayout x:Name="ContentRoot" VerticalOptions="Start" Spacing="12" Padding="20,14,20,14">
 
-		<!-- Prefix Selector -->
-		<Label Text="Prefix" FontSize="12" />
-		<!-- No Title: it renders as a second header line above the value, which
-		     duplicates the "Prefix" label and costs ~20px of a cramped window. -->
-		<Picker
-			x:Name="PrefixPicker"
-			AutomationId="PrefixPicker"
-			SemanticProperties.Description="Branch prefix"
-			ItemsSource="{Binding PrefixOptions}"
-			SelectedItem="{Binding Prefix}"
-			HorizontalOptions="Fill" />
+			<!-- Header. Dragging is handled by WindowService (XAML pointer
+			     events on the window root, header strip only) - no gestures here. -->
+			<Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
+				<Label Text="BeNGy" Style="{StaticResource PaletteTitle}" VerticalOptions="Center" />
+				<Button Grid.Column="1"
+					AutomationId="SettingsButton"
+					Style="{StaticResource GlyphButton}"
+					Text="&#xE713;"
+					Clicked="OnSettingsClicked"
+					SemanticProperties.Description="Settings" />
+				<Button Grid.Column="2"
+					AutomationId="CloseButton"
+					Style="{StaticResource CloseGlyphButton}"
+					Text="&#xE8BB;"
+					Command="{Binding DismissCommand}"
+					SemanticProperties.Description="Close to tray" />
+			</Grid>
 
-		<!-- Ticket Number Input -->
-		<Label Text="Ticket / Issue #" FontSize="12" />
-		<Entry
-			x:Name="TicketEntry"
-			AutomationId="TicketEntry"
-			SemanticProperties.Description="Ticket number"
-			Text="{Binding TicketNumber}"
-			Placeholder="PROJ-1234"
-			Keyboard="Plain"
-			ReturnType="Next"
-			HorizontalOptions="Fill" />
+			<!-- Input row: prefix + ticket side by side -->
+			<Grid ColumnDefinitions="150,*" ColumnSpacing="12">
+				<Picker
+					x:Name="PrefixPicker"
+					AutomationId="PrefixPicker"
+					SemanticProperties.Description="Branch prefix"
+					ItemsSource="{Binding PrefixOptions}"
+					SelectedItem="{Binding Prefix}" />
+				<Entry Grid.Column="1"
+					x:Name="TicketEntry"
+					AutomationId="TicketEntry"
+					SemanticProperties.Description="Ticket number"
+					Text="{Binding TicketNumber}"
+					Placeholder="EXP-123"
+					Keyboard="Plain"
+					ReturnType="Next" />
+			</Grid>
 
-		<!-- Title / Description Input -->
-		<Label Text="Title / Description" FontSize="12" />
-		<Entry
-			x:Name="TitleEntry"
-			AutomationId="TitleEntry"
-			SemanticProperties.Description="Branch title"
-			Text="{Binding Title}"
-			Placeholder="Add OAuth login flow"
-			Keyboard="Plain"
-			ReturnType="Done"
-			ReturnCommand="{Binding CopyCommand}"
-			HorizontalOptions="Fill" />
+			<Entry
+				x:Name="TitleEntry"
+				AutomationId="TitleEntry"
+				SemanticProperties.Description="Branch title"
+				Text="{Binding Title}"
+				Placeholder="Ticket Title"
+				Keyboard="Plain"
+				ReturnType="Done"
+				ReturnCommand="{Binding CopyCommand}" />
 
-		<!-- Branch Name Preview -->
-		<Label Text="Generated Branch Name" FontSize="12" Margin="0,10,0,0" />
+			<!-- Preview card: branch name | copy icon. The whole card copies.
+			     PreviewLabel uses SemanticProperties.Hint, NOT Description:
+			     Description replaces the accessible name, so screen readers (and
+			     UI Automation tests) got a fixed label instead of the branch name. -->
+			<Border Style="{StaticResource PreviewCard}" Padding="12,4" HeightRequest="44">
+				<Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+					<Label
+						x:Name="PreviewLabel"
+						AutomationId="PreviewLabel"
+						SemanticProperties.Hint="Generated branch name preview. Click to copy."
+						Style="{StaticResource MonoText}"
+						Text="{Binding GeneratedBranchName}"
+						TextColor="{AppThemeBinding Light={StaticResource TextPrimary}, Dark={StaticResource TextPrimaryDark}}"
+						LineBreakMode="TailTruncation"
+						VerticalOptions="Center">
+						<Label.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding CopyCommand}" />
+						</Label.GestureRecognizers>
+					</Label>
+					<BoxView Grid.Column="1"
+						WidthRequest="1"
+						HeightRequest="22"
+						VerticalOptions="Center"
+						Color="{AppThemeBinding Light={StaticResource CardStroke}, Dark={StaticResource CardStrokeDark}}" />
+					<Button Grid.Column="2"
+						x:Name="CopyButton"
+						AutomationId="CopyButton"
+						SemanticProperties.Description="Copy branch name to clipboard"
+						Style="{StaticResource CardGlyphButton}"
+						WidthRequest="32"
+						HeightRequest="32"
+						FontSize="14"
+						Text="&#xE8C8;"
+						Command="{Binding CopyCommand}"
+						VerticalOptions="Center">
+						<Button.Triggers>
+							<!-- Brief checkmark feedback after a successful copy -->
+							<DataTrigger TargetType="Button" Binding="{Binding CopySuccess}" Value="True">
+								<Setter Property="Text" Value="&#xE73E;" />
+								<Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource SuccessText}, Dark={StaticResource SuccessTextDark}}" />
+							</DataTrigger>
+						</Button.Triggers>
+					</Button>
+				</Grid>
+			</Border>
 
-		<Border
-			BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray900}}"
-			Stroke="{AppThemeBinding Light={StaticResource Gray300}, Dark={StaticResource Gray600}}"
-			StrokeShape="RoundRectangle 4"
-			StrokeThickness="1"
-			Padding="12,8">
-
-			<Label
-				x:Name="PreviewLabel"
-				AutomationId="PreviewLabel"
-				SemanticProperties.Description="Generated branch name preview"
-				Text="{Binding GeneratedBranchName}"
-				FontFamily="Consolas"
-				FontSize="14"
-				TextColor="{AppThemeBinding Light={StaticResource Gray900}, Dark={StaticResource White}}"
-				LineBreakMode="TailTruncation">
-				<Label.GestureRecognizers>
-					<TapGestureRecognizer Command="{Binding CopyCommand}" />
-				</Label.GestureRecognizers>
-			</Label>
-
-		</Border>
-
-		<!-- Validation Status Row -->
-		<HorizontalStackLayout
-			AutomationId="ValidationStatusRow"
-			IsVisible="{Binding HasBranchName}"
-			Spacing="6"
-			Margin="0,6,0,0">
-
-			<!-- Green checkmark — visible when valid -->
-			<Label
-				AutomationId="ValidIndicator"
-				SemanticProperties.Description="Valid branch name"
-				Text="✓"
-				TextColor="#22C55E"
-				FontSize="16"
-				FontAttributes="Bold"
-				IsVisible="{Binding IsValid}"
-				VerticalOptions="Center" />
-
-			<!-- Amber warning — visible when invalid -->
-			<Label
-				AutomationId="InvalidIndicator"
-				SemanticProperties.Description="Invalid branch name"
-				Text="⚠"
-				TextColor="#F59E0B"
-				FontSize="16"
-				IsVisible="{Binding IsValid, Converter={toolkit:InvertedBoolConverter}}"
-				VerticalOptions="Center" />
-
-			<!-- Status text: "Valid" / "Needs attention" -->
-			<Label
-				AutomationId="ValidationStatusLabel"
-				SemanticProperties.Description="Validation status"
-				Text="{Binding IsValid, Converter={StaticResource ValidationStatusConverter}}"
-				TextColor="{Binding IsValid, Converter={StaticResource ValidationColorConverter}}"
-				FontSize="12"
-				VerticalOptions="Center" />
-
-		</HorizontalStackLayout>
-
-		<!-- Inline validation warning section -->
-		<VerticalStackLayout
-			AutomationId="ValidationWarningSection"
-			IsVisible="{Binding IsValid, Converter={toolkit:InvertedBoolConverter}}"
-			Margin="0,2,0,0"
-			Spacing="4">
-
-			<!-- General validation error summary -->
-			<Label
-				AutomationId="ValidationMessageLabel"
-				Text="{Binding ValidationMessage}"
-				TextColor="#F59E0B"
-				FontSize="12"
-				IsVisible="{Binding ValidationMessage, Converter={StaticResource StringNotEmptyConverter}}"
-				LineBreakMode="WordWrap" />
-
-			<!-- Specific invalid character callout -->
-			<HorizontalStackLayout
-				AutomationId="InvalidCharsRow"
-				IsVisible="{Binding HasInvalidCharacters}"
-				Spacing="4">
-
-				<Label
-					AutomationId="InvalidCharsPrefix"
-					Text="Characters not allowed:"
-					TextColor="#F59E0B"
-					FontSize="12"
-					VerticalOptions="Center" />
-
-				<Label
-					AutomationId="InvalidCharsLabel"
-					Text="{Binding InvalidCharactersDisplay}"
-					TextColor="#F59E0B"
-					FontSize="12"
-					FontFamily="Consolas"
-					FontAttributes="Bold"
-					VerticalOptions="Center" />
-
-			</HorizontalStackLayout>
+			<!-- One amber InfoBar with a single message: the validator's text
+			     already names the offending characters, so a second "characters
+			     not allowed" row would only repeat it. -->
+			<Border
+				Style="{StaticResource WarningInfoBar}"
+				IsVisible="{Binding IsValid, Converter={toolkit:InvertedBoolConverter}}">
+				<!-- Neither Border nor panels get WinUI automation peers, so this
+				     container is NOT findable by UIA id — tests must anchor on the
+				     Labels inside (e.g. ValidationMessageLabel). The id stays for
+				     tree-walking tools that use the raw view. -->
+				<Grid AutomationId="ValidationWarningSection" ColumnDefinitions="Auto,*" ColumnSpacing="10">
+					<Label Text="&#xE7BA;"
+						FontFamily="Segoe Fluent Icons"
+						FontSize="16"
+						TextColor="{AppThemeBinding Light={StaticResource WarningText}, Dark={StaticResource WarningTextDark}}"
+						VerticalOptions="Start" />
+					<Label Grid.Column="1"
+						AutomationId="ValidationMessageLabel"
+						Style="{StaticResource Caption}"
+						TextColor="{AppThemeBinding Light={StaticResource WarningText}, Dark={StaticResource WarningTextDark}}"
+						Text="{Binding ValidationMessage}"
+						IsVisible="{Binding ValidationMessage, Converter={StaticResource StringNotEmptyConverter}}"
+						LineBreakMode="WordWrap" />
+				</Grid>
+			</Border>
 
 		</VerticalStackLayout>
-
-		<!-- Copy Button — Primary Action (Story 4.1) -->
-		<Button
-			x:Name="CopyButton"
-			AutomationId="CopyButton"
-			SemanticProperties.Description="Copy branch name to clipboard"
-			Text="{Binding CopyButtonText}"
-			Command="{Binding CopyCommand}"
-			BackgroundColor="{Binding CopySuccess, Converter={StaticResource CopySuccessColorConverter}}"
-			TextColor="White"
-			FontSize="16"
-			FontAttributes="Bold"
-			HeightRequest="44"
-			CornerRadius="4"
-			Margin="0,16,0,0"
-			HorizontalOptions="Fill" />
-
-		<!-- Hint when copy is blocked by validation -->
-		<Label
-			AutomationId="CopyBlockedLabel"
-			Text="Fix validation issues above to copy"
-			TextColor="#F59E0B"
-			FontSize="11"
-			HorizontalOptions="Center"
-			IsVisible="{Binding IsValid, Converter={toolkit:InvertedBoolConverter}}"
-			Margin="0,4,0,0" />
-
-	</VerticalStackLayout>
 	</ScrollView>
 
 </ContentPage>

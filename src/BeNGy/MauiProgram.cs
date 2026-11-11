@@ -57,6 +57,12 @@ public static class MauiProgram
 		builder.Logging.AddDebug();
 #endif
 
+#if WINDOWS
+		BeNGy.Platforms.Windows.FluentHandlers.Register();
+		builder.ConfigureMauiHandlers(handlers =>
+			handlers.AddHandler<NavigationPage, BeNGy.Platforms.Windows.PaletteNavigationHandler>());
+#endif
+
 		return builder.Build();
 	}
 }
