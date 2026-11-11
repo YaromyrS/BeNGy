@@ -32,21 +32,60 @@ public partial class MainPage : ContentPage
 			_windowService.Shown += (_, _) =>
 			{
 				if (_isCurrentPage)
-					Dispatcher.Dispatch(() => TicketEntry.Focus());
+					Dispatcher.Dispatch(() =>
+					{
+						TicketEntry.Focus();
+						PlayEntrance();
+					});
 			};
 		}
 	}
+
+	// True from appearing until this page has drawn: until then the window keeps
+	// its size (see ApplySurfaceAfterRenderAsync).
+	private bool _surfaceDeferred;
 
 	private void UpdateSurface()
 	{
 		// Settings sits on top of this page in the navigation stack and owns
 		// the window size while it is shown.
-		if (!_isCurrentPage) return;
+		if (!_isCurrentPage || _surfaceDeferred) return;
 
 		if (ContentRoot.Height > 0)
 			_windowService?.FitPaletteToContent(ContentRoot.Height);
 		else
 			_windowService?.SetPaletteSize(PaletteSurface.Main);   // before the first layout pass
+	}
+
+	/// <summary>
+	/// Fits the window to this page once the page has drawn. Shrinking right away
+	/// on return from Settings left ~150 ms of a clipped Settings page and then an
+	/// empty palette before the form appeared (acrylic resize lag, see FrameAwaiter).
+	/// </summary>
+	private async Task ApplySurfaceAfterRenderAsync()
+	{
+		_surfaceDeferred = true;
+#if WINDOWS
+		await Platforms.Windows.FrameAwaiter.NextFramesAsync();
+#else
+		await Task.CompletedTask;
+#endif
+		_surfaceDeferred = false;
+		UpdateSurface();
+	}
+
+	private bool _hasAppeared;
+
+	/// <summary>Palette entrance: fade + rise + settle, PowerToys Run-style.</summary>
+	private void PlayEntrance()
+	{
+		this.Opacity = 0;
+		this.TranslationY = 8;
+		this.Scale = 0.98;
+		_ = Task.WhenAll(
+			this.FadeTo(1, 120, Easing.CubicOut),
+			this.TranslateTo(0, 0, 120, Easing.CubicOut),
+			this.ScaleTo(1, 120, Easing.CubicOut));
 	}
 
 	private void OnSettingsClicked(object sender, EventArgs e)
@@ -59,19 +98,19 @@ public partial class MainPage : ContentPage
 		base.OnAppearing();
 		_isCurrentPage = true;
 
-		// Palette entrance: fade + rise + settle, PowerToys Run-style.
-		this.Opacity = 0;
-		this.TranslationY = 8;
-		this.Scale = 0.98;
-		_ = Task.WhenAll(
-			this.FadeTo(1, 120, Easing.CubicOut),
-			this.TranslateTo(0, 0, 120, Easing.CubicOut),
-			this.ScaleTo(1, 120, Easing.CubicOut));
+		// The entrance belongs to the palette appearing (first show here, later
+		// summons via Shown), not to page switches: replaying it on every return
+		// from Settings made going back feel slow.
+		if (!_hasAppeared)
+		{
+			_hasAppeared = true;
+			PlayEntrance();
+		}
 
 		// Returning from Settings (or first show): re-apply anything settings
 		// changed (separators, formats, prefix catalog), then pick the surface.
 		_viewModel.RefreshFromPreferences();
-		UpdateSurface();
+		_ = ApplySurfaceAfterRenderAsync();
 
 #if WINDOWS
 		// The preview is tap-to-copy — advertise it with a hand cursor.
@@ -91,6 +130,7 @@ public partial class MainPage : ContentPage
 		if (mauiWindow?.Content != null)
 		{
 			mauiWindow.Content.KeyDown += OnWindowKeyDown;
+			mauiWindow.Content.PreviewKeyDown += OnWindowPreviewKeyDown;
 		}
 #endif
 	}
@@ -106,6 +146,7 @@ public partial class MainPage : ContentPage
 		if (mauiWindow?.Content != null)
 		{
 			mauiWindow.Content.KeyDown -= OnWindowKeyDown;
+			mauiWindow.Content.PreviewKeyDown -= OnWindowPreviewKeyDown;
 		}
 #endif
 	}
@@ -123,5 +164,34 @@ public partial class MainPage : ContentPage
 			e.Handled = true;
 		}
 	}
+
+	/// <summary>
+	/// Ctrl+C copies the branch name -- unless text is selected in a field, which
+	/// keeps the ordinary copy. Unlike Enter or the Copy button it does not close
+	/// the palette or clear the form: a Ctrl+C can be a slip. Preview (tunneling)
+	/// because the focused TextBox would otherwise consume Ctrl+C before a
+	/// bubbling KeyDown reaches the window.
+	/// </summary>
+	private void OnWindowPreviewKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+	{
+		if (e.Key != Windows.System.VirtualKey.C || !IsDown(Windows.System.VirtualKey.Control)
+			|| IsDown(Windows.System.VirtualKey.Shift) || IsDown(Windows.System.VirtualKey.Menu))
+			return;
+
+		var root = (sender as Microsoft.UI.Xaml.UIElement)?.XamlRoot;
+		if (root is not null
+			&& Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(root) is Microsoft.UI.Xaml.Controls.TextBox { SelectionLength: > 0 })
+			return;
+
+		if (_viewModel.CopyKeepOpenCommand.CanExecute(null))
+		{
+			_viewModel.CopyKeepOpenCommand.Execute(null);
+			e.Handled = true;
+		}
+	}
+
+	private static bool IsDown(Windows.System.VirtualKey key) =>
+		Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key)
+			.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 #endif
 }

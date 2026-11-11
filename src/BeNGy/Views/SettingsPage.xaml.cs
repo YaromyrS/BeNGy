@@ -27,7 +27,8 @@ public partial class SettingsPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        
+        _viewModel.RefreshExternalState();
+
 #if WINDOWS
         var mauiWindow = Window?.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
         if (mauiWindow != null)
@@ -40,7 +41,11 @@ public partial class SettingsPage : ContentPage
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
-        
+
+        // Leaving Settings (back, or close-to-tray, which pops first) must not
+        // leave capture armed.
+        _viewModel.CancelHotkeyCapture();
+
 #if WINDOWS
         var mauiWindow = Window?.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
         if (mauiWindow != null)

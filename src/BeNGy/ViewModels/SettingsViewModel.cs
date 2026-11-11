@@ -43,10 +43,7 @@ public partial class SettingsViewModel : BaseViewModel
         _hotkeyDisplay = BeNGy.Helpers.HotkeyFormattingHelper.FormatHotkey(mods, key);
 
         // Story M2: If hotkey failed during startup, show error in VM immediately
-        if (_hotkeyService != null && !_hotkeyService.IsRegistered)
-        {
-            HotkeyError = "Global hotkey is currently unavailable. It may be in use by another application.";
-        }
+        HotkeyError = RegistrationStatusMessage();
 
         // Formatting
         _selectedTitleFormat = _preferences.Get(PreferenceKeys.TitleFormat, PreferenceKeys.TitleFormatDefault);
@@ -129,6 +126,21 @@ public partial class SettingsViewModel : BaseViewModel
     private string _changeButtonText = "Change";
 
     /// <summary>
+    /// Re-reads state that can change outside the app (the Run key behind
+    /// "Start with Windows"). The page is reused across opens, so its view model
+    /// no longer starts fresh each time.
+    /// </summary>
+    public void RefreshExternalState()
+    {
+        StartWithWindows = _startupService?.IsStartWithWindows ?? false;
+    }
+
+    private string RegistrationStatusMessage() =>
+        _hotkeyService is { IsRegistered: false }
+            ? "Global hotkey is currently unavailable. It may be in use by another application."
+            : string.Empty;
+
+    /// <summary>
     /// Toggles the hotkey capture mode.
     /// </summary>
     [RelayCommand]
@@ -136,19 +148,41 @@ public partial class SettingsViewModel : BaseViewModel
     {
         if (IsCapturingHotkey)
         {
-            // Cancel capture
-            IsCapturingHotkey = false;
-            ChangeButtonText = "Change";
-            HotkeyError = string.Empty;
+            CancelHotkeyCapture();
+            return;
         }
-        else
-        {
-            // Start capture
-            IsCapturingHotkey = true;
-            ChangeButtonText = "Cancel";
-            HotkeyError = "Press the new hotkey combination...";
-        }
+
+        IsCapturingHotkey = true;
+        ChangeButtonText = "Cancel";
+        HotkeyError = string.Empty;   // the view shows the capture prompt itself
+
+        // The CURRENT hotkey never reaches the page's key handler: the global
+        // registration swallows it and raises HotkeyPressed instead. Pressing
+        // it while capturing means "keep what I have", so it cancels.
+        if (_hotkeyService is not null)
+            _hotkeyService.HotkeyPressed += OnHotkeyPressedWhileCapturing;
     }
+
+    /// <summary>
+    /// Leaves capture mode without changing the hotkey. Safe to call when not
+    /// capturing (the page calls it on leaving Settings).
+    /// </summary>
+    public void CancelHotkeyCapture()
+    {
+        if (!IsCapturingHotkey) return;
+        EndHotkeyCapture();
+        HotkeyError = RegistrationStatusMessage();
+    }
+
+    private void EndHotkeyCapture()
+    {
+        IsCapturingHotkey = false;
+        ChangeButtonText = "Change";
+        if (_hotkeyService is not null)
+            _hotkeyService.HotkeyPressed -= OnHotkeyPressedWhileCapturing;
+    }
+
+    private void OnHotkeyPressedWhileCapturing(object? sender, EventArgs e) => CancelHotkeyCapture();
 
     /// <summary>
     /// Processes a key down event from the view during capture mode.
@@ -158,6 +192,15 @@ public partial class SettingsViewModel : BaseViewModel
     {
         if (!IsCapturingHotkey || e is not (HotkeyModifiers mods, HotkeyKey key))
             return;
+
+        // Esc cancels. (The current combination cancels via HotkeyPressed while it
+        // is registered; if it reaches us here it is NOT registered, and pressing
+        // it again is a retry, so it falls through to registration.)
+        if (mods == HotkeyModifiers.None && key == HotkeyKey.Escape)
+        {
+            CancelHotkeyCapture();
+            return;
+        }
 
         // Validation: Must have at least one modifier
         if (mods == HotkeyModifiers.None)
@@ -177,8 +220,7 @@ public partial class SettingsViewModel : BaseViewModel
             
             // Update UI
             HotkeyDisplay = BeNGy.Helpers.HotkeyFormattingHelper.FormatHotkey(mods, key);
-            IsCapturingHotkey = false;
-            ChangeButtonText = "Change";
+            EndHotkeyCapture();
             HotkeyError = string.Empty;
         }
         else

@@ -135,11 +135,41 @@ public partial class MainViewModel : BaseViewModel
         }
         else
         {
-            // Copy failed — stay open, show feedback
-            CopyButtonText = "Copy failed – try again";
-            await Task.Delay(2000);
-            CopyButtonText = "Copy";
+            await ShowCopyFailedAsync();
         }
+    }
+
+    /// <summary>
+    /// Ctrl+C: copies and confirms like <see cref="CopyCommand"/>, but keeps the
+    /// palette open with the form intact -- a stray Ctrl+C must not throw the
+    /// input away.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanCopy), AllowConcurrentExecutions = false)]
+    private async Task CopyKeepOpenAsync()
+    {
+        if (!CanCopy()) return;
+
+        if (!await _clipboardService.CopyToClipboardAsync(GeneratedBranchName))
+        {
+            await ShowCopyFailedAsync();
+            return;
+        }
+
+        CopySuccess = true;
+        CopyButtonText = "Copied! ✓";
+        await Task.Delay(CopiedFeedbackMs);
+        CopySuccess = false;
+        CopyButtonText = "Copy";
+    }
+
+    internal const int CopiedFeedbackMs = 1200;
+
+    private async Task ShowCopyFailedAsync()
+    {
+        // Copy failed — stay open, show feedback
+        CopyButtonText = "Copy failed – try again";
+        await Task.Delay(2000);
+        CopyButtonText = "Copy";
     }
 
     private bool CanCopy() => IsValid && !string.IsNullOrEmpty(GeneratedBranchName);
@@ -148,6 +178,7 @@ public partial class MainViewModel : BaseViewModel
     partial void OnValidationResultChanged(ValidationResult value)
     {
         CopyCommand.NotifyCanExecuteChanged();
+        CopyKeepOpenCommand.NotifyCanExecuteChanged();
     }
 
     // ── Dismiss / Escape (Story 4.4) ────────────────────────────────

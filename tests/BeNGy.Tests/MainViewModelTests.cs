@@ -454,6 +454,35 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task CopyKeepOpen_CopiesButKeepsWindowAndForm()
+    {
+        _viewModel.Prefix = "bugfix";
+        _viewModel.TicketNumber = "PROJ-123";
+        _viewModel.Title = "some title";
+
+        await _viewModel.CopyKeepOpenCommand.ExecuteAsync(null);
+
+        await _clipboard.Received(1).CopyToClipboardAsync("bugfix/PROJ-123_some-title");
+        _windowService.DidNotReceive().HideWindow();
+        Assert.Equal("PROJ-123", _viewModel.TicketNumber);
+        Assert.Equal("some title", _viewModel.Title);
+        Assert.Equal("Copy", _viewModel.CopyButtonText);   // feedback reset afterwards
+    }
+
+    [Fact]
+    public void CopyKeepOpen_CanExecute_FollowsValidation()
+    {
+        Assert.False(_viewModel.CopyKeepOpenCommand.CanExecute(null));   // empty
+
+        _viewModel.Prefix = "feature";
+        _viewModel.TicketNumber = "PROJ-123";
+        Assert.True(_viewModel.CopyKeepOpenCommand.CanExecute(null));
+
+        _viewModel.TicketNumber = "PROJ?123";
+        Assert.False(_viewModel.CopyKeepOpenCommand.CanExecute(null));
+    }
+
+    [Fact]
     public async Task CopyCommand_Success_ClearsForm()
     {
         _viewModel.Prefix = "bugfix";

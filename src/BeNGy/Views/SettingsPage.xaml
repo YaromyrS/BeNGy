@@ -15,29 +15,24 @@
          keyboard input put focus on it, so a stray "Back" tooltip popped at the
          window corner and Tab had an invisible stop. The page has its own
          DoneButton for going back. -->
+    <!-- Hotkey capture has no page-wide overlay (it greyed out the whole
+         palette): the other sections disable themselves, the hotkey card gets
+         an accent outline and a prompt, and leaving the page cancels capture. -->
     <Grid>
-        <!-- Capture overlay retained from the original page (M1 fix) -->
-        <BoxView IsVisible="{Binding IsCapturingHotkey}"
-            BackgroundColor="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray900}}"
-            Opacity="0.5"
-            InputTransparent="False"
-            ZIndex="10">
-            <BoxView.GestureRecognizers>
-                <TapGestureRecognizer Command="{Binding ChangeHotkeyCommand}" />
-            </BoxView.GestureRecognizers>
-        </BoxView>
-
         <ScrollView Padding="20,14,20,20">
             <VerticalStackLayout Spacing="4">
 
                 <!-- Header: back chevron (same handler as Done) + title + close.
-                     Dragging is a native caption region declared by
-                     WindowService (InputNonClientPointerSource) — no gestures. -->
+                     Dragging: WindowService handles pointer presses in the header
+                     strip (outside the button columns) - no gestures here. -->
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,0,0,8">
+                    <!-- ChevronLeft at close-glyph scale: the 16px Back arrow (E72B)
+                         read as oversized next to the title. -->
                     <Button
                         AutomationId="DoneButton"
                         Style="{StaticResource GlyphButton}"
-                        Text="&#xE72B;"
+                        Text="&#xE76B;"
+                        FontSize="12"
                         Clicked="OnDoneClicked"
                         SemanticProperties.Description="Done" />
                     <Label Grid.Column="1" Text="Settings" FontSize="20" FontAttributes="Bold" VerticalOptions="Center" VerticalTextAlignment="Center" />
@@ -141,6 +136,12 @@
 
                 <Label Text="GLOBAL HOTKEY" Style="{StaticResource SectionHeader}" />
                 <Border Style="{StaticResource SettingsCard}">
+                    <Border.Triggers>
+                        <DataTrigger TargetType="Border" Binding="{Binding IsCapturingHotkey}" Value="True">
+                            <Setter Property="Stroke" Value="{DynamicResource Accent}" />
+                            <Setter Property="StrokeThickness" Value="2" />
+                        </DataTrigger>
+                    </Border.Triggers>
                     <VerticalStackLayout>
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" HeightRequest="52">
                             <Label Text="&#xE765;" FontFamily="Segoe Fluent Icons" VerticalOptions="Center" VerticalTextAlignment="Center" />
@@ -166,6 +167,11 @@
                                     FontSize="12" />
                             </HorizontalStackLayout>
                         </Grid>
+                        <Label Text="Press the new shortcut. Esc or the current shortcut cancels."
+                            AutomationId="HotkeyCapturePrompt"
+                            Style="{StaticResource Caption}"
+                            IsVisible="{Binding IsCapturingHotkey}"
+                            Margin="0,0,0,8" />
                         <Label Text="{Binding HotkeyError}"
                             Style="{StaticResource Caption}"
                             TextColor="#EF4444"

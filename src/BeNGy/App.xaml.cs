@@ -84,6 +84,8 @@ public partial class App : Application
 			_windowService?.ShowWindow();
 		}
 
+		PrewarmSettingsPage();
+
 		_logger?.LogInformation("BeNGy startup complete");
 	}
 
@@ -189,18 +191,53 @@ public partial class App : Application
 	{
 		MainThread.BeginInvokeOnMainThread(async () =>
 		{
-			var services = Handler?.MauiContext?.Services;
-			var settingsVm = services?.GetService<SettingsViewModel>();
-			
-			if (settingsVm != null && _mainWindow?.Page != null)
+			if (_mainWindow?.Page is not { } root || GetSettingsPage() is not { } settingsPage)
+				return;
+
+			// Already open (e.g. tray "Settings" while on it): one instance can't
+			// be pushed twice.
+			if (!root.Navigation.NavigationStack.Contains(settingsPage))
 			{
 				// Push without animation (a palette snaps, it doesn't slide) and
-				// grow AFTER the content exists — growing first exposed an
-				// unrendered region that flashed black.
-				await _mainWindow.Page.Navigation.PushAsync(new SettingsPage(settingsVm, _windowService), animated: false);
-				_windowService?.SetPaletteSize(PaletteSurface.Settings);
-				_windowService?.ShowWindow();
+				// grow only once Settings has drawn: growing any earlier showed the
+				// main page over a black area for ~100-200 ms (see FrameAwaiter).
+				await root.Navigation.PushAsync(settingsPage, animated: false);
+#if WINDOWS
+				await Platforms.Windows.FrameAwaiter.RenderedAsync(settingsPage);
+#endif
 			}
+			_windowService?.SetPaletteSize(PaletteSurface.Settings);
+			_windowService?.ShowWindow();
+		});
+	}
+
+	/// <summary>
+	/// The Settings page is built once and reused: inflating it took 170-320 ms
+	/// on EVERY open (measured 2026-11-11, Release barely faster than Debug) --
+	/// one of the costs that made switching feel slow, next to the navigation
+	/// animation (PaletteNavigationHandler) and the resize lag (FrameAwaiter).
+	/// </summary>
+	private SettingsPage? GetSettingsPage()
+	{
+		if (_settingsPage is null && Handler?.MauiContext?.Services.GetService<SettingsViewModel>() is { } settingsVm)
+			_settingsPage = new SettingsPage(settingsVm, _windowService);
+		return _settingsPage;
+	}
+
+	private SettingsPage? _settingsPage;
+
+	/// <summary>
+	/// Builds the Settings page and its native controls shortly after startup, so
+	/// the FIRST open is not the cold one (measured: ~300 ms cold, ~140 ms after
+	/// this prewarm, ~70 ms on later opens). The delay keeps the work off the
+	/// startup path and the first summon.
+	/// </summary>
+	private void PrewarmSettingsPage()
+	{
+		_mainWindow?.Dispatcher.DispatchDelayed(TimeSpan.FromSeconds(2), () =>
+		{
+			if (GetSettingsPage() is { } page && _mainWindow?.Handler?.MauiContext is { } context && page.Handler is null)
+				Microsoft.Maui.Platform.ElementExtensions.ToHandler(page, context);
 		});
 	}
 
