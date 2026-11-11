@@ -37,6 +37,7 @@
     <Compile Include="..\..\src\BeNGy\Models\BranchInput.cs" Link="Shared\BranchInput.cs" />
     <Compile Include="..\..\src\BeNGy\Helpers\SingleInstanceManager.cs" Link="Shared\SingleInstanceManager.cs" />
     <Compile Include="..\..\src\BeNGy\Helpers\StringTransformers.cs" Link="Shared\StringTransformers.cs" />
+    <Compile Include="..\..\src\BeNGy\Helpers\PaletteDrag.cs" Link="Shared\PaletteDrag.cs" />
     <Compile Include="..\..\src\BeNGy\ViewModels\BaseViewModel.cs" Link="Shared\BaseViewModel.cs" />
     <Compile Include="..\..\src\BeNGy\ViewModels\MainViewModel.cs" Link="Shared\MainViewModel.cs" />
     <Compile Include="..\..\src\BeNGy\Models\ValidationResult.cs" Link="Shared\ValidationResult.cs" />

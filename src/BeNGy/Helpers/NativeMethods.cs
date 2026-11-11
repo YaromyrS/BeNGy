@@ -20,38 +20,12 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool SetForegroundWindow(IntPtr hWnd);
 
-    // ── Borderless window dragging (WM_NCHITTEST subclass) ────────
-    // A chromeless palette has no title bar; answering WM_NCHITTEST with
-    // HTCAPTION for the header strip makes Windows treat it as a native
-    // caption: drag works from the first pixel of movement, with no extra
-    // input-sink windows polluting the UI Automation tree.
+    // ── Palette window: DPI, header drag ──────────────────────────
 
-    internal const uint WM_NCHITTEST = 0x0084;
-    internal const uint WM_NCLBUTTONDOWN = 0x00A1;
-    internal const uint WM_NCLBUTTONUP = 0x00A2;
-    internal const uint WM_SYSCOMMAND = 0x0112;
-    internal const uint WM_MOUSEMOVE = 0x0200;
-    internal const uint WM_LBUTTONDOWN = 0x0201;
-    internal const uint WM_LBUTTONUP = 0x0202;
-    internal const long MK_LBUTTON = 0x0001;   // mouse-message wParam: left button is down
-    internal const uint WM_CAPTURECHANGED = 0x0215;
-    internal const uint WM_ENTERSIZEMOVE = 0x0231;
-    internal const uint WM_EXITSIZEMOVE = 0x0232;
-    internal const uint WM_NCPOINTERDOWN = 0x0242;
-    internal const uint WM_NCPOINTERUP = 0x0243;
-    internal const uint WM_POINTERUPDATE = 0x0245;
-    internal const uint WM_POINTERDOWN = 0x0246;
-    internal const uint WM_POINTERUP = 0x0247;
-    internal const uint WM_POINTERENTER = 0x0249;
-    internal const uint WM_POINTERLEAVE = 0x024A;
-    internal const uint WM_POINTERCAPTURECHANGED = 0x024C;
     internal const uint WM_DPICHANGED = 0x02E0;
 
     [DllImport("user32.dll")]
     internal static extern uint GetDpiForWindow(IntPtr hWnd);
-    internal static readonly IntPtr HTCLIENT = new(1);
-    internal static readonly IntPtr HTCAPTION = new(2);
-    internal static readonly IntPtr HTTRANSPARENT = new(-1);
 
     internal const uint SWP_NOSIZE = 0x0001;
     internal const uint SWP_NOZORDER = 0x0004;
@@ -68,23 +42,13 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
 
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    internal static extern bool IsWindow(IntPtr hWnd);
-
     [StructLayout(LayoutKind.Sequential)]
     internal struct POINT { public int X; public int Y; }
 
-    [DllImport("user32.dll")]
+    /// <summary>Cursor position in physical screen pixels (the process is per-monitor DPI aware).</summary>
+    [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    internal static extern bool ScreenToClient(IntPtr hWnd, ref POINT point);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    internal static extern bool ClientToScreen(IntPtr hWnd, ref POINT point);
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    internal static extern IntPtr FindWindowEx(IntPtr hWndParent, IntPtr hWndChildAfter, string? lpszClass, string? lpszWindow);
+    internal static extern bool GetCursorPos(out POINT point);
 
     // ── Global hotkey (Epic 5) ────────────────────────────────────
 
