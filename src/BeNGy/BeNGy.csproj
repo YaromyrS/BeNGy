@@ -30,7 +30,7 @@
 		<FileVersion>1.1.0.0</FileVersion>
 
 		<!-- Unpackaged by default (installer, MSI, zip). The Store build passes
-		     -p:WindowsPackageType=MSIX; see tools/release/build-release.ps1. -->
+		     -p:WindowsPackageType=MSIX; see tools/packaging/build-release.ps1. -->
 		<WindowsPackageType Condition="'$(WindowsPackageType)' == ''">None</WindowsPackageType>
 
 		<!-- Package metadata -->

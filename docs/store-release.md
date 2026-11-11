@@ -7,7 +7,7 @@ BeNGy ships two ways from the same code:
 | Website / GitHub Releases | `BeNGy-Setup-x64.exe`, `BeNGy-x64.msi`, `BeNGy-x64-portable.zip` | unpackaged |
 | Microsoft Store | `BeNGy_<version>.0_x64.msix` | MSIX (packaged) |
 
-`powershell -File tools\release\build-release.ps1 -Msix` builds all of them into
+`powershell -File tools\packaging\build-release.ps1 -Msix` builds all of them into
 `artifacts\<version>\`, plus `SHA256SUMS.txt`. The version is
 `ApplicationDisplayVersion` in `src\BeNGy\BeNGy.csproj`. Keep `ApplicationVersion`
 at `0`: it becomes the fourth part of the MSIX version, and the Store rejects a
@@ -16,7 +16,7 @@ non-zero fourth part.
 ## Website release
 
 1. Bump `ApplicationDisplayVersion`, update `CHANGELOG.md`, merge to `main`, tag `vX.Y.Z`.
-2. Build: `powershell -File tools\release\build-release.ps1`.
+2. Build: `powershell -File tools\packaging\build-release.ps1`.
 3. `gh release create vX.Y.Z artifacts\X.Y.Z\BeNGy-Setup-x64.exe artifacts\X.Y.Z\BeNGy-x64.msi artifacts\X.Y.Z\BeNGy-x64-portable.zip artifacts\X.Y.Z\SHA256SUMS.txt --notes-file <notes>`
 
 The website links to `releases/latest/download/<file name>`, so keep the file
@@ -39,7 +39,7 @@ files build reputation. A code-signing certificate removes that.
      `ApplicationIdGuid`)
    - `Package/Identity/Publisher`: replaces `CN=User Name`
    - `PublisherDisplayName`: replaces `User Name`
-4. **Build.** Run `powershell -File tools\release\build-release.ps1 -Msix`. The
+4. **Build.** Run `powershell -File tools\packaging\build-release.ps1 -Msix`. The
    `.msix` is unsigned on purpose: the Store signs it. To install it locally for
    testing, sign a copy with a self-signed certificate that you trust on the
    test machine.

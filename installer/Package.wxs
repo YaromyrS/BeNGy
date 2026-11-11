@@ -1,0 +1,47 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!-- Per-user install (no admin prompt) to %LocalAppData%\Programs\BeNGy.
+       UpgradeCode is permanent: never change it, or upgrades stop replacing
+       older versions. -->
+  <Package Name="BeNGy"
+           Manufacturer="BeNGy"
+           Version="$(var.Version)"
+           UpgradeCode="07C1475F-9FDC-4A77-9BFD-F3EBDF78F03F"
+           Scope="perUser"
+           Compressed="yes">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of BeNGy is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="BeNGyIcon" SourceFile="$(var.PublishDir)BeNGy.exe" />
+    <Property Id="ARPPRODUCTICON" Value="BeNGyIcon" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/YaromyrS/BeNGy/issues" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/YaromyrS/BeNGy" />
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="BeNGy" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenuShortcut" Guid="B1E8611D-F6AF-47D8-997F-1426E077B372">
+        <Shortcut Id="BeNGyShortcut"
+                  Name="BeNGy"
+                  Description="Git branch name generator"
+                  Target="[INSTALLFOLDER]BeNGy.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKCU" Key="Software\BeNGy\Installer" Name="StartMenuShortcut"
+                       Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="BeNGy">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)**" />
+    </ComponentGroup>
+  </Fragment>
+</Wix>
