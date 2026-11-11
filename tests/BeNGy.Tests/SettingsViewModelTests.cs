@@ -314,6 +314,30 @@ public class SettingsViewModelTests
         _startupService.Received(1).SetStartWithWindows(true);
     }
 
+    [Fact]
+    public void StartWithWindows_AppliedByWindows_StaysOn()
+    {
+        var vm = CreateVm();
+        _startupService.When(s => s.SetStartWithWindows(true))
+            .Do(_ => _startupService.IsStartWithWindows.Returns(true));
+
+        vm.StartWithWindows = true;
+
+        Assert.True(vm.StartWithWindows);
+    }
+
+    [Fact]
+    public void StartWithWindows_RefusedByWindows_ShowsTheRealState()
+    {
+        // Store build: the user disabled BeNGy in Task Manager's startup apps,
+        // so enabling it from the app has no effect.
+        var vm = CreateVm();   // IsStartWithWindows stays false
+
+        vm.StartWithWindows = true;
+
+        Assert.False(vm.StartWithWindows);
+    }
+
     // ── Story 6.6: Start Minimized ────────────────────────────────
 
     [Fact]

@@ -280,6 +280,11 @@ public partial class SettingsViewModel : BaseViewModel
     partial void OnStartWithWindowsChanged(bool value)
     {
         _startupService?.SetStartWithWindows(value);
+
+        // Windows can refuse (Store build: the user turned BeNGy off in Task
+        // Manager's startup apps, which only they can undo). Show what is real.
+        if (_startupService is not null && _startupService.IsStartWithWindows != value)
+            StartWithWindows = _startupService.IsStartWithWindows;
     }
 
     // ── Story 6.6: Start Minimized ────────────────────────────────

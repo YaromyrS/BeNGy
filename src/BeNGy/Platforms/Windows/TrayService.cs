@@ -23,7 +23,11 @@ public class TrayService : ITrayService
     {
         if (_trayIcon != null) return;
 
-        _trayIcon = new TrayIconWithContextMenu("BeNGy")
+        // The icon's GUID is hashed from this name, and Windows ties a tray GUID
+        // to the executable's path (NOTIFYICONDATA guidItem). A Store (MSIX)
+        // install moves to a new versioned folder on every update, so the path
+        // is part of the seed or the icon could fail to appear after an update.
+        _trayIcon = new TrayIconWithContextMenu($"BeNGy|{Environment.ProcessPath}")
         {
             ContextMenu = new PopupMenu
             {

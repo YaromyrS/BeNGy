@@ -179,6 +179,14 @@ public partial class App : Application
 		if (args.Contains("--minimized"))
 			return true;
 
+#if WINDOWS
+		// Store (MSIX) builds start with Windows through a StartupTask, which
+		// passes no arguments: recognise the activation itself.
+		if (Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs().Kind
+			== Microsoft.Windows.AppLifecycle.ExtendedActivationKind.StartupTask)
+			return true;
+#endif
+
 		// Otherwise use setting (default: true)
 		return _preferences?.Get(PreferenceKeys.StartMinimized, PreferenceKeys.StartMinimizedDefault)
 			   ?? PreferenceKeys.StartMinimizedDefault;
