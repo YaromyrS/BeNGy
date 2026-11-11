@@ -33,6 +33,7 @@ internal static class NativeMethods
     internal const uint WM_MOUSEMOVE = 0x0200;
     internal const uint WM_LBUTTONDOWN = 0x0201;
     internal const uint WM_LBUTTONUP = 0x0202;
+    internal const long MK_LBUTTON = 0x0001;   // mouse-message wParam: left button is down
     internal const uint WM_CAPTURECHANGED = 0x0215;
     internal const uint WM_ENTERSIZEMOVE = 0x0231;
     internal const uint WM_EXITSIZEMOVE = 0x0232;

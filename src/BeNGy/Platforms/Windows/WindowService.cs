@@ -321,7 +321,15 @@ public class WindowService : IWindowService
                 when _dragSource == DragSource.None && TryStartDrag(ClientToScreen(hwnd, UnpackPoint(lParam)), DragSource.Legacy):
                 return IntPtr.Zero;
 
-            case NativeMethods.WM_MOUSEMOVE when _dragSource == DragSource.Legacy:
+            // Only moves with the left button held belong to the drag. Windows
+            // also synthesizes WM_MOUSEMOVE (button up) whenever the window
+            // moves under a stationary cursor; following those snapped the
+            // palette to wherever the cursor rested (E2E drag test, 125%
+            // sandbox, cursor parked over the palette) and would make a drag
+            // whose button-up landed elsewhere stick to the cursor. They pass
+            // through to WinUI as ordinary hover input.
+            case NativeMethods.WM_MOUSEMOVE
+                when _dragSource == DragSource.Legacy && (wParam.ToInt64() & NativeMethods.MK_LBUTTON) != 0:
                 MoveWindowWithCursor(ClientToScreen(hwnd, UnpackPoint(lParam)));
                 return IntPtr.Zero;
 

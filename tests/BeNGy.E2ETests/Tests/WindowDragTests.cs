@@ -128,7 +128,9 @@ public class WindowDragTests
     private static void SendMouse(IntPtr hwnd, uint msg, Point clientPoint)
     {
         // Legacy mouse lParams pack signed 16-bit CLIENT coords. wParam
-        // carries button state, which the drag handler does not read.
+        // carries button state: the drag handler follows only moves with
+        // MK_LBUTTON set, which is how it ignores the button-up moves Windows
+        // synthesizes when the window slides under the VM's resting cursor.
         var lparam = new IntPtr(((clientPoint.Y & 0xFFFF) << 16) | (clientPoint.X & 0xFFFF));
         SendMessage(hwnd, msg, new IntPtr(msg == WM_LBUTTONUP ? 0 : 1), lparam);
     }
