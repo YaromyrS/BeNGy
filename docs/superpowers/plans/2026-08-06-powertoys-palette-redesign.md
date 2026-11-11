@@ -1016,11 +1016,15 @@ The sandbox leaves the host untouched, but Step 2's manual driving ran on the ho
 
 > Done 2026-11-11: Theme = System, read back after a relaunch. The capture never touches Default Prefix; it stayed at the user's own value (`hotfix`, not `feature`). The form was left empty and BeNGy closed, since it was not running before.
 
-- [ ] **Step 5: User approval gate**
+- [x] **Step 5: User approval gate**
+
+> Approved by the user on 2026-11-11, after live-testing pass five.
 
 Present the screenshots and the E2E comparison. **Do not merge without explicit user approval of the look.**
 
-- [ ] **Step 6: Merge and push (only after approval)**
+- [x] **Step 6: Merge and push (only after approval)**
+
+> Merged and pushed on 2026-11-11 as release v1.1.0.
 
 ```bash
 git checkout main
