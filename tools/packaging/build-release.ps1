@@ -83,7 +83,10 @@ if ($Msix) {
 
 Write-Host '== Checksums'
 $files = Get-ChildItem $out -File | Where-Object { $_.Extension -in '.exe', '.msi', '.zip', '.msix' }
-$files | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } |
+# SHA256SUMS.txt ships with the GitHub release, so it lists the website
+# downloads only; the unsigned .msix goes to Partner Center, not to users.
+$files | Where-Object { $_.Extension -ne '.msix' } |
+    ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } |
     Set-Content -Encoding ascii (Join-Path $out 'SHA256SUMS.txt')
 
 Write-Host "== Done: $out"
