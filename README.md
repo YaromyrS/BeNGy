@@ -2,6 +2,8 @@
 
 A lightweight Windows desktop utility that helps developers generate consistently formatted Git branch names instantly. Press **Ctrl+Shift+B** from any application, enter your ticket number and description, and get a ready-to-use branch name copied to your clipboard.
 
+**Download:** [getbengy.vercel.app](https://getbengy.vercel.app), or grab `BeNGy-Setup-x64.exe`, the MSI, or the portable zip from [the latest release](https://github.com/YaromyrS/BeNGy/releases/latest). It runs on Windows 10 (version 2004 or later) and Windows 11, x64, and needs nothing else installed.
+
 ## Features
 
 - **Global Hotkey** -- Summon BeNGy from anywhere with Ctrl+Shift+B
