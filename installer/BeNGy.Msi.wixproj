@@ -20,5 +20,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Package.wxs" />
+    <!-- util:RemoveFolderEx: deletes the install folder on uninstall. -->
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
   </ItemGroup>
 </Project>
